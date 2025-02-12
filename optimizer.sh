@@ -765,7 +765,8 @@ queuing() {
         echo -e "${RED}6. ${CYAN}DDR${NC}"
         echo -e "${RED}7. ${CYAN}PFIFO FAST${NC}"
         echo && echo -ne "${YELLOW}Enter your choice [0-3]: ${NC}"
-        read -r choice
+        choice=1
+        echo "Chosen option $choice"
         case $choice in
             1) algorithm="fq_codel";;
             2) algorithm="fq";;
@@ -812,7 +813,8 @@ queuing() {
     echo -e "${RED}0. ${CYAN} Without BBR ${NC}"
     echo ""
     echo -ne "${YELLOW}Enter your choice [0-3]: ${NC}"
-    read -r choice
+    choice=1
+    echo "Chosen option $choice"
 
 case $choice in
       1)
@@ -953,7 +955,8 @@ while true; do
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
-    read -r choice
+    choice=1
+    echo "Chosen option $choice"
     case $choice in
         1)
             clear
