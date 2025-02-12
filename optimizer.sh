@@ -229,16 +229,7 @@ press_enter() {
 }
 
 ask_reboot() {
-echo && echo -e "\n ${YELLOW}Reboot now? (Recommended) ${GREEN}[y/n]${NC}"
-read reboot
-case "$reboot" in
-        [Yy]) 
-        systemctl reboot
-        ;;
-        *) 
-        return 
-        ;;
-    esac
+echo && echo -e "\n ${YELLOW}systemctl reboot (Recommended) ${GREEN}[y/n]${NC}"
 exit
 }
 set_timezone() {
