@@ -230,7 +230,7 @@ press_enter() {
 
 ask_reboot() {
 echo && echo -e "\n ${YELLOW}systemctl reboot (Recommended) ${GREEN}[y/n]${NC}"
-exit
+exit 1
 }
 set_timezone() {
     clear
