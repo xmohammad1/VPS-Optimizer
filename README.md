@@ -1,3 +1,14 @@
+## Complete optimizer with BBR versions
+
+###  ‼️ INSTRUCTION ‼️
+
+#### 👉 Debian Base (Ubuntu & Debian) x86 & Arm64
+   
+```
+apt install curl -y && bash <(curl -s https://raw.githubusercontent.com/xmohammad1/VPS-Optimizer/main/optimizer.sh --ipv4)
+```
+
+---------------------------------------------------------------------------------------------------------------------------------------
 ### VPS Optimizer One-click (V.2) with optional Swap , TCP congestion control , Grub tuning , Sourcelist for iranian servers (Debian based)
  
 [Web View of this repo](https://opiran-club.github.io/VPS-Optimizer)
@@ -21,17 +32,6 @@
 
 Supported Debian base (Debian , Ubuntu) with X86 & Arm64 & OpenVZ architecture 
    
----------------------------------------------------------------------------------------------------------------------------------------
-## Complete optimizer with BBR versions
-
-###  ‼️ INSTRUCTION ‼️
-
-#### 👉 Debian Base (Ubuntu & Debian) x86 & Arm64
-   
-```
-apt install curl -y && bash <(curl -s https://raw.githubusercontent.com/xmohammad1/VPS-Optimizer/main/optimizer.sh --ipv4)
-```
-
 ---------------------------------------------------------------------------------------------------------------------------------------
 
 [Xanmod BBRv.3 page](https://opiran-club.github.io/VPS-Optimizer/Xanmod/)
