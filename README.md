@@ -1,7 +1,5 @@
 ## Complete optimizer with BBR versions
 
-###  ‼️ INSTRUCTION ‼️
-
 #### 👉 Debian Base (Ubuntu & Debian) x86 & Arm64
    
 ```
