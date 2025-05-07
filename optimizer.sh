@@ -4,6 +4,11 @@
 # Author: github.com/opiran-club
 #
 # For more information and updates, visit github.com/opiran-club and @opiranclub on telegram.
+HOST_PATH="/etc/hosts"
+if ! grep -q $(hostname) $HOST_PATH; then
+echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+echo "Hosts Fixed."
+fi
 CYAN="\e[96m"
 GREEN="\e[92m"
 YELLOW="\e[93m"
@@ -547,7 +552,8 @@ remove_old_sysctl() {
     sed -i '/1000000/d' /etc/profile
 cat <<EOL > /etc/sysctl.conf
 # System Configuration Settings for Improved Performance and Security
-
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
 # File limits
 fs.file-max = 67108864
 
