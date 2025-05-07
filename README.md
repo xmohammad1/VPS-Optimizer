@@ -1,6 +1,6 @@
 ### VPS Optimizer One-click (V.2) with optional Swap , TCP congestion control , Grub tuning , Sourcelist for iranian servers (Debian based)
  
-[Web View of this repo](https://opiran-club.github.io/VPS-Optimizer)
+[Web View of this repo](https://xmohammad1.github.io/VPS-Optimizer)
 
 ##### Summurize configuration
 
@@ -29,19 +29,19 @@ Supported Debian base (Debian , Ubuntu) with X86 & Arm64 & OpenVZ architecture
 #### 👉 Debian Base (Ubuntu & Debian) x86 & Arm64
    
 ```
-apt install curl -y && bash <(curl -s https://raw.githubusercontent.com/opiran-club/VPS-Optimizer/main/optimizer.sh --ipv4)
+apt install curl -y && bash <(curl -s https://raw.githubusercontent.com/xmohammad1/VPS-Optimizer/main/optimizer.sh --ipv4)
 ```
 
 ---------------------------------------------------------------------------------------------------------------------------------------
 
-[Xanmod BBRv.3 page](https://opiran-club.github.io/VPS-Optimizer/Xanmod/)
+[Xanmod BBRv.3 page](https://xmohammad1.github.io/VPS-Optimizer/Xanmod/)
 
-[BadVPN page](https://opiran-club.github.io/VPS-Optimizer/badvpn/)
+[BadVPN page](https://xmohammad1.github.io/VPS-Optimizer/badvpn/)
 
 ---------------------------------------------------------------------------------------------------------------------------------------
 
 ### Credits
- - credited by [OPIran](https://github.com/opiran-club)
+ - credited by [OPIran](https://github.com/xmohammad1)
 
 ### Contacts
  - Visit Me at [OPIran-Gap](https://t.me/opiranclub)
