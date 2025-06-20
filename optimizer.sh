@@ -18,6 +18,7 @@ MAGENTA="\e[95m"
 WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
+ufw disable
 check_qdisc_support() {
     local algorithm="$1"
 
