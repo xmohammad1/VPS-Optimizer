@@ -723,12 +723,12 @@ EOL
 cat <<EOL > /etc/security/limits.conf
 * soft nproc 655350
 * hard nproc 655350
-* soft nofile 655350
-* hard nofile 655350
+* soft nofile 1048576
+* hard nofile 1048576
 root soft nproc 655350
 root hard nproc 655350
-root soft nofile 655350
-root hard nofile 655350
+root soft nofile 1048576
+root hard nofile 1048576
 EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
