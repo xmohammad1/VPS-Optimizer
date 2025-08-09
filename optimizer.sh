@@ -1197,3 +1197,4 @@ while true; do
     echo && echo -e "\n${RED}Press Enter to continue...${NC}"
     read -r
 done
+done
