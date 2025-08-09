@@ -546,6 +546,46 @@ swap_maker_1() {
     fi
     sysctl -p
 }
+
+# Helpers for systemd configuration
+backup_file() {
+    local file=$1
+    if [[ -f "$file" && ! -f "${file}.bak" ]]; then
+        cp "$file" "${file}.bak"
+    fi
+}
+
+apply_setting() {
+    local file=$1
+    local key=$2
+    local value=$3
+    if grep -q "^$key" "$file"; then
+        sed -i "s/^$key.*/$key=$value/" "$file"
+    else
+        echo "$key=$value" >> "$file"
+    fi
+}
+
+systemd_optimizations() {
+    local SYSTEM_CONF="/etc/systemd/system.conf"
+    local USER_CONF="/etc/systemd/user.conf"
+
+    echo
+    echo "Optimizing systemd limits..."
+
+    backup_file "$SYSTEM_CONF"
+    backup_file "$USER_CONF"
+
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "1048576"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "655350"
+    apply_setting "$SYSTEM_CONF" "DefaultTasksMax" "infinity"
+
+    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
+    apply_setting "$USER_CONF" "DefaultLimitNPROC" "655350"
+
+    systemctl daemon-reexec
+    echo "systemd limits optimized."
+}
 # System Limits Optimizations
 limits_optimizations() {
     echo
@@ -612,9 +652,10 @@ limits_optimizations() {
     echo "ulimit -x unlimited" | tee -a $PROF_PATH
 
 
-    echo 
+    systemd_optimizations
+    echo
     echo "System Limits are Optimized."
-    echo 
+    echo
     sleep 0.5
 }
 remove_old_sysctl() {
@@ -1155,5 +1196,4 @@ while true; do
     esac
     echo && echo -e "\n${RED}Press Enter to continue...${NC}"
     read -r
-done
 done
