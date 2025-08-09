@@ -19,6 +19,7 @@ WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
 PROF_PATH="/etc/profile"
+SSH_PATH="/etc/ssh/sshd_config"
 ufw disable
 check_qdisc_support() {
     local algorithm="$1"
@@ -732,6 +733,62 @@ EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
     press_enter
+}
+# Remove old SSH config to prevent duplicates.
+remove_old_ssh_conf() {
+    ## Make a backup of the original sshd_config file
+    cp $SSH_PATH /etc/ssh/sshd_config.bak
+
+    echo 
+    echo "Default SSH Config file Saved. Directory: /etc/ssh/sshd_config.bak"
+    echo 
+    sleep 1
+
+    ## Remove these lines
+    sed -i -e 's/#UseDNS yes/UseDNS no/' \
+        -e 's/#Compression no/Compression yes/' \
+        -e 's/Ciphers .*/Ciphers aes256-ctr,chacha20-poly1305@openssh.com/' \
+        -e '/MaxAuthTries/d' \
+        -e '/MaxSessions/d' \
+        -e '/TCPKeepAlive/d' \
+        -e '/ClientAliveInterval/d' \
+        -e '/ClientAliveCountMax/d' \
+        -e '/AllowAgentForwarding/d' \
+        -e '/AllowTcpForwarding/d' \
+        -e '/GatewayPorts/d' \
+        -e '/PermitTunnel/d' \
+        -e '/X11Forwarding/d' "$SSH_PATH"
+
+}
+# Update SSH config
+update_sshd_conf() {
+    echo 
+    echo "Optimizing SSH..."
+    echo 
+    sleep 0.5
+
+    ## Enable TCP keep-alive messages
+    echo "TCPKeepAlive yes" | tee -a "$SSH_PATH"
+
+    ## Configure client keep-alive messages
+    echo "ClientAliveInterval 3000" | tee -a "$SSH_PATH"
+    echo "ClientAliveCountMax 100" | tee -a "$SSH_PATH"
+
+    ## Allow TCP forwarding
+    echo "AllowTcpForwarding yes" | tee -a "$SSH_PATH"
+
+    ## Enable gateway ports
+    echo "GatewayPorts yes" | tee -a "$SSH_PATH"
+
+    ## Enable tunneling
+    echo "PermitTunnel yes" | tee -a "$SSH_PATH"
+
+    ## Enable X11 graphical interface forwarding
+    echo "X11Forwarding yes" | tee -a "$SSH_PATH"
+
+    ## Restart the SSH service to apply the changes
+    sudo systemctl restart ssh
+    sleep 0.5
 }
 optimize_ssh_configuration() {
     clear
