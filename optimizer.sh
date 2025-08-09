@@ -1104,6 +1104,7 @@ while true; do
             fun_bar "Updating sysctl configuration" remove_old_sysctl
             limits_optimizations
             fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
+            update_sshd_conf
             ask_bbr_version
             final
             ;;
