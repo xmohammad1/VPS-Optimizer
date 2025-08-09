@@ -634,7 +634,7 @@ fs.file-max = 67108864
 
 # Network core settings
 net.core.default_qdisc = fq_codel
-net.core.netdev_max_backlog = 32768
+net.core.netdev_max_backlog = 65536
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
 net.core.rmem_max = 33554432
