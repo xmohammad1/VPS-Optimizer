@@ -18,6 +18,7 @@ MAGENTA="\e[95m"
 WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
+PROF_PATH="/etc/profile"
 ufw disable
 check_qdisc_support() {
     local algorithm="$1"
@@ -544,6 +545,77 @@ swap_maker_1() {
     fi
     sysctl -p
 }
+# System Limits Optimizations
+limits_optimizations() {
+    echo
+    echo "Optimizing System Limits..."
+    echo 
+    sleep 0.5
+
+    ## Clear old ulimits
+    sed -i '/ulimit -c/d' $PROF_PATH
+    sed -i '/ulimit -d/d' $PROF_PATH
+    sed -i '/ulimit -f/d' $PROF_PATH
+    sed -i '/ulimit -i/d' $PROF_PATH
+    sed -i '/ulimit -l/d' $PROF_PATH
+    sed -i '/ulimit -m/d' $PROF_PATH
+    sed -i '/ulimit -n/d' $PROF_PATH
+    sed -i '/ulimit -q/d' $PROF_PATH
+    sed -i '/ulimit -s/d' $PROF_PATH
+    sed -i '/ulimit -t/d' $PROF_PATH
+    sed -i '/ulimit -u/d' $PROF_PATH
+    sed -i '/ulimit -v/d' $PROF_PATH
+    sed -i '/ulimit -x/d' $PROF_PATH
+    sed -i '/ulimit -s/d' $PROF_PATH
+
+
+    ## Add new ulimits
+    ## The maximum size of core files created.
+    echo "ulimit -c unlimited" | tee -a $PROF_PATH
+
+    ## The maximum size of a process's data segment
+    echo "ulimit -d unlimited" | tee -a $PROF_PATH
+
+    ## The maximum size of files created by the shell (default option)
+    echo "ulimit -f unlimited" | tee -a $PROF_PATH
+
+    ## The maximum number of pending signals
+    echo "ulimit -i unlimited" | tee -a $PROF_PATH
+
+    ## The maximum size that may be locked into memory
+    echo "ulimit -l unlimited" | tee -a $PROF_PATH
+
+    ## The maximum memory size
+    echo "ulimit -m unlimited" | tee -a $PROF_PATH
+
+    ## The maximum number of open file descriptors
+    echo "ulimit -n 1048576" | tee -a $PROF_PATH
+
+    ## The maximum POSIX message queue size
+    echo "ulimit -q unlimited" | tee -a $PROF_PATH
+
+    ## The maximum stack size
+    echo "ulimit -s -H 65536" | tee -a $PROF_PATH
+    echo "ulimit -s 32768" | tee -a $PROF_PATH
+
+    ## The maximum number of seconds to be used by each process.
+    echo "ulimit -t unlimited" | tee -a $PROF_PATH
+
+    ## The maximum number of processes available to a single user
+    echo "ulimit -u unlimited" | tee -a $PROF_PATH
+
+    ## The maximum amount of virtual memory available to the process
+    echo "ulimit -v unlimited" | tee -a $PROF_PATH
+
+    ## The maximum number of file locks
+    echo "ulimit -x unlimited" | tee -a $PROF_PATH
+
+
+    echo 
+    echo "System Limits are Optimized."
+    echo 
+    sleep 0.5
+}
 remove_old_sysctl() {
     clear
     title=" Network Optimizing "
@@ -973,6 +1045,7 @@ while true; do
             fun_bar "Installing useful packages" installations
             fun_bar "Creating swap file with 512MB" swap_maker_1
             fun_bar "Updating sysctl configuration" remove_old_sysctl
+            limits_optimizations
             fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
             ask_bbr_version
             final
