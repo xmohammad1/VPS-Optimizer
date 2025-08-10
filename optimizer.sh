@@ -576,12 +576,12 @@ systemd_optimizations() {
     backup_file "$SYSTEM_CONF"
     backup_file "$USER_CONF"
 
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "1048576"
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "655350"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "infinity"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "infinity"
     apply_setting "$SYSTEM_CONF" "DefaultTasksMax" "infinity"
 
-    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
-    apply_setting "$USER_CONF" "DefaultLimitNPROC" "655350"
+    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "infinity"
+    apply_setting "$USER_CONF" "DefaultLimitNPROC" "infinity"
 
     systemctl daemon-reexec
     echo "systemd limits optimized."
@@ -630,7 +630,7 @@ limits_optimizations() {
     echo "ulimit -m unlimited" | tee -a $PROF_PATH
 
     ## The maximum number of open file descriptors
-    echo "ulimit -n 1048576" | tee -a $PROF_PATH
+    echo "ulimit -n unlimited" | tee -a $PROF_PATH
 
     ## The maximum POSIX message queue size
     echo "ulimit -q unlimited" | tee -a $PROF_PATH
@@ -762,14 +762,14 @@ vm.dirty_ratio = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc 655350
-* hard nproc 655350
-* soft nofile 1048576
-* hard nofile 1048576
-root soft nproc 655350
-root hard nproc 655350
-root soft nofile 1048576
-root hard nofile 1048576
+* soft nproc unlimited
+* hard nproc unlimited
+* soft nofile unlimited
+* hard nofile unlimited
+root soft nproc unlimited
+root hard nproc unlimited
+root soft nofile unlimited
+root hard nofile unlimited
 EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
