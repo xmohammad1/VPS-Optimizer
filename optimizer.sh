@@ -762,14 +762,14 @@ vm.dirty_ratio = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc unlimited
-* hard nproc unlimited
-* soft nofile unlimited
-* hard nofile unlimited
-root soft nproc unlimited
-root hard nproc unlimited
-root soft nofile unlimited
-root hard nofile unlimited
+* soft nproc 1048576
+* hard nproc 1048576
+* soft nofile 1048576
+* hard nofile 1048576
+root soft nproc 1048576
+root hard nproc 1048576
+root soft nofile 1048576
+root hard nofile 1048576
 EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
