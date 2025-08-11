@@ -630,7 +630,7 @@ limits_optimizations() {
     echo "ulimit -m unlimited" | tee -a $PROF_PATH
 
     ## The maximum number of open file descriptors
-    echo "ulimit -n unlimited" | tee -a $PROF_PATH
+    echo "ulimit -n 1048576" | tee -a $PROF_PATH
 
     ## The maximum POSIX message queue size
     echo "ulimit -q unlimited" | tee -a $PROF_PATH
