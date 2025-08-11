@@ -580,8 +580,8 @@ systemd_optimizations() {
     apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "infinity"
     apply_setting "$SYSTEM_CONF" "DefaultTasksMax" "infinity"
 
-    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "infinity"
-    apply_setting "$USER_CONF" "DefaultLimitNPROC" "infinity"
+    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
+    apply_setting "$USER_CONF" "DefaultLimitNPROC" "1048576"
 
     systemctl daemon-reexec
     echo "systemd limits optimized."
