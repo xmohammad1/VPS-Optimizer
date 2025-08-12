@@ -788,7 +788,26 @@ EOL
     fi
     press_enter
 }
+systemd_optimizations() {
+    local SYSTEM_CONF="/etc/systemd/system.conf"
+    local USER_CONF="/etc/systemd/user.conf"
 
+    echo
+    echo "Optimizing systemd limits..."
+
+    backup_file "$SYSTEM_CONF"
+    backup_file "$USER_CONF"
+
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "infinity"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "infinity"
+    apply_setting "$SYSTEM_CONF" "DefaultTasksMax" "infinity"
+
+    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
+    apply_setting "$USER_CONF" "DefaultLimitNPROC" "1048576"
+
+    systemctl daemon-reexec
+    echo "systemd limits optimized."
+}
 grub_tuning() {
   clear
   logo
@@ -1053,6 +1072,7 @@ while true; do
             fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
             update_sshd_conf
             ask_bbr_version
+            systemd_optimizations
             final
             ;;
         2)
