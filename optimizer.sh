@@ -603,7 +603,6 @@ vm.dirty_writeback_centisecs = 500
 # TCP settings
 net.ipv4.tcp_rmem = 16384 1048576 33554432
 net.ipv4.tcp_wmem = 16384 1048576 33554432
-net.ipv4.tcp_congestion_control = bbr
 net.ipv4.tcp_fin_timeout = 25
 net.ipv4.tcp_keepalive_time = 1200
 net.ipv4.tcp_keepalive_probes = 7
@@ -647,7 +646,6 @@ net.ipv4.conf.default.rp_filter = 2
 net.ipv4.conf.all.rp_filter = 2
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
-net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
