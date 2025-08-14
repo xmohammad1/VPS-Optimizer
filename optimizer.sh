@@ -649,10 +649,6 @@ net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
-# Connection tracking settings for high user count
-net.netfilter.nf_conntrack_max = 1048576
-net.netfilter.nf_conntrack_buckets = 262144
-
 # ARP settings
 net.ipv4.neigh.default.gc_thresh1 = 4096
 net.ipv4.neigh.default.gc_thresh2 = 32768
