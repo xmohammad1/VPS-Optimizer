@@ -582,7 +582,7 @@ fs.file-max = 67108864
 
 # Network core settings
 net.core.default_qdisc = fq_codel
-net.core.netdev_max_backlog = 65536
+net.core.netdev_max_backlog = 250000
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
 net.core.rmem_max = 33554432
@@ -609,7 +609,7 @@ net.ipv4.tcp_keepalive_time = 1200
 net.ipv4.tcp_keepalive_probes = 7
 net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_max_orphans = 819200
-net.ipv4.tcp_max_syn_backlog = 65536
+net.ipv4.tcp_max_syn_backlog = 262144
 net.ipv4.tcp_max_tw_buckets = 1440000
 net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
@@ -652,10 +652,14 @@ net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
+# Connection tracking settings for high user count
+net.netfilter.nf_conntrack_max = 1048576
+net.netfilter.nf_conntrack_buckets = 262144
+
 # ARP settings
-net.ipv4.neigh.default.gc_thresh1 = 512
-net.ipv4.neigh.default.gc_thresh2 = 2048
-net.ipv4.neigh.default.gc_thresh3 = 16384
+net.ipv4.neigh.default.gc_thresh1 = 4096
+net.ipv4.neigh.default.gc_thresh2 = 32768
+net.ipv4.neigh.default.gc_thresh3 = 65536
 net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
@@ -1122,5 +1126,4 @@ while true; do
     esac
     echo && echo -e "\n${RED}Press Enter to continue...${NC}"
     read -r
-done
 done
