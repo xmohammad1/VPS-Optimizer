@@ -795,9 +795,8 @@ systemd_optimizations() {
     backup_file "$SYSTEM_CONF"
     backup_file "$USER_CONF"
 
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "infinity"
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "infinity"
-    apply_setting "$SYSTEM_CONF" "DefaultTasksMax" "infinity"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "1048576"
+    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "1048576"
 
     apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
     apply_setting "$USER_CONF" "DefaultLimitNPROC" "1048576"
