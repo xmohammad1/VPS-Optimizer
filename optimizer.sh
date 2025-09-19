@@ -1030,9 +1030,6 @@ block_port_853() {
         fi
     fi
 
-    ufw --force disable >/dev/null 2>&1
-    ufw --force reset >/dev/null 2>&1
-
     if ! ufw default allow incoming >/dev/null 2>&1; then
         echo && echo -e "${RED}Failed to set default incoming policy. Aborting.${NC}"
         press_enter
