@@ -1000,6 +1000,67 @@ else
     echo && echo -e "$RED Error: Speedtest is not installed.$NC"
 fi
 }
+
+block_port_853() {
+    clear
+    title="Block Port 853 (DNS over TLS)"
+    logo
+    echo && echo -e "${MAGENTA}${title}${NC}"
+    echo && echo -e "\e[93m+-------------------------------------+\e[0m"
+
+    if ! command -v ufw &>/dev/null; then
+        echo && echo -e "${YELLOW}UFW is not installed. Installing...${NC}"
+        if ! apt-get update >/dev/null 2>&1; then
+            echo && echo -e "${RED}Failed to update package lists. Aborting.${NC}"
+            press_enter
+            return 1
+        fi
+        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y ufw >/dev/null 2>&1; then
+            echo && echo -e "${RED}Failed to install UFW. Aborting.${NC}"
+            press_enter
+            return 1
+        fi
+    fi
+
+    if [ -f /etc/default/ufw ]; then
+        if grep -q '^IPV6=' /etc/default/ufw; then
+            sed -i 's/^IPV6=.*/IPV6=yes/' /etc/default/ufw
+        else
+            echo 'IPV6=yes' >> /etc/default/ufw
+        fi
+    fi
+
+    if ! ufw default allow incoming >/dev/null 2>&1; then
+        echo && echo -e "${RED}Failed to set default incoming policy. Aborting.${NC}"
+        press_enter
+        return 1
+    fi
+
+    if ! ufw default allow outgoing >/dev/null 2>&1; then
+        echo && echo -e "${RED}Failed to set default outgoing policy. Aborting.${NC}"
+        press_enter
+        return 1
+    fi
+
+    if ! ufw default allow routed >/dev/null 2>&1; then
+        echo && echo -e "${RED}Failed to set default routed policy. Aborting.${NC}"
+        press_enter
+        return 1
+    fi
+
+    ufw deny in proto any to any port 853 comment 'Block DoT incoming' >/dev/null 2>&1
+    ufw deny out proto any to any port 853 comment 'Block DoT outgoing' >/dev/null 2>&1
+    ufw route deny proto any to any port 853 comment 'Block DoT routed' >/dev/null 2>&1
+
+    if ufw --force enable >/dev/null 2>&1; then
+        echo && echo -e "${GREEN}Port 853 blocked for all directions (IPv4/IPv6) while default policies allow other traffic.${NC}"
+    else
+        echo && echo -e "${RED}Failed to enable UFW. Please check UFW status manually.${NC}"
+    fi
+
+    press_enter
+}
+
 benchmark() {
     clear
     title="Benchmark (iperf test)"
@@ -1053,7 +1114,8 @@ while true; do
     printf "${GREEN} 8) ${NC} Unbound DNS ${NC}\n"
     printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
     printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
-    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
+    printf "${GREEN} 11) ${NC} Block Port 853 (UFW)${NC}\n"
+    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
     read -r choice
@@ -1107,6 +1169,9 @@ while true; do
             ;;
         10)
             bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh) --AAAA
+            ;;
+        11)
+            block_port_853
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
