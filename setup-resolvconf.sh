@@ -126,8 +126,8 @@ verify_configuration() {
 main() {
   require_root
   backup_resolv_conf
-  disable_systemd_resolved
   install_resolvconf
+  disable_systemd_resolved
   configure_resolvconf
   verify_configuration
 }
