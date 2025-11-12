@@ -59,7 +59,7 @@ disable_systemd_resolved() {
       echo "Removing systemd-resolved stub symlink at /etc/resolv.conf..."
       rm -f /etc/resolv.conf
       # Create a minimal valid file; resolvconf will later manage/overwrite it.
-      printf "nameserver 127.0.0.1\n" >/etc/resolv.conf
+      printf "nameserver 1.1.1.1\n" >/etc/resolv.conf
     fi
   fi
 }
@@ -126,8 +126,8 @@ verify_configuration() {
 main() {
   require_root
   backup_resolv_conf
-  install_resolvconf
   disable_systemd_resolved
+  install_resolvconf
   configure_resolvconf
   verify_configuration
 }
