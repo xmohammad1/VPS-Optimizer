@@ -1,135 +1,205 @@
 #!/usr/bin/env bash
-#
 # setup-resolvconf.sh
 #
-# Install and configure resolvconf on Ubuntu 22.04 (Jammy)
-# Primary DNS: 1.1.1.1 (Cloudflare)
-# Secondary DNS: 8.8.8.8 (Google)
+# Install and configure resolvconf on Ubuntu 22.04 (Jammy),
+# setting DNS to 1.1.1.1 (primary) and 8.8.8.8 (secondary).
 #
-# This script:
-#   - Verifies you’re running as root
-#   - Backs up /etc/resolv.conf
-#   - Disables/masks systemd-resolved (the default DNS stub) to avoid conflicts
-#   - Installs resolvconf
-#   - Configures resolvconf to publish 1.1.1.1 then 8.8.8.8
-#   - Applies and verifies the configuration
+# Modes:
+#   (default)  Install/configure resolvconf and apply DNS
+#   --status   Show current DNS/resolv.conf ownership
+#   --revert   Re-enable systemd-resolved and remove resolvconf
 #
 # Safe to re-run (idempotent).
-set -euo pipefail
 
-PRIMARY_DNS="${PRIMARY_DNS:-1.1.1.1}"
-SECONDARY_DNS="${SECONDARY_DNS:-8.8.8.8}"
+set -Eeuo pipefail
+
+DNS1="${DNS1:-1.1.1.1}"
+DNS2="${DNS2:-8.8.8.8}"
+NM_DROPIN="/etc/NetworkManager/conf.d/90-dns-default.conf"
+HEAD_DIR="/etc/resolvconf/resolv.conf.d"
+HEAD_FILE="${HEAD_DIR}/head"
+BACKUP_DIR="/root/resolvconf-backups"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+
+log() { printf '[*] %s\n' "$*"; }
+warn() { printf '[!] %s\n' "$*" >&2; }
+die() { printf '[x] %s\n' "$*" >&2; exit 1; }
 
 require_root() {
-  if [[ $EUID -ne 0 ]]; then
-    echo "Please run as root (use sudo)." >&2
-    exit 1
+  [[ $EUID -eq 0 ]] || die "Please run as root (sudo)."
+}
+
+check_os() {
+  if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    source /etc/os-release
+    if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "22.04" ]]; then
+      die "This script targets Ubuntu 22.04 (Jammy). Detected: ${PRETTY_NAME:-unknown}"
+    fi
+  else
+    die "Cannot detect OS (/etc/os-release missing)."
   fi
 }
 
-
-backup_resolv_conf() {
-  if [[ -e /etc/resolv.conf ]]; then
-    local ts="/etc/resolv.conf.backup.$(date +%Y%m%d-%H%M%S)"
-    cp -a /etc/resolv.conf "$ts"
-    echo "Backed up current /etc/resolv.conf to $ts"
+wsl_notice() {
+  if grep -qiE '(microsoft|wsl)' /proc/version 2>/dev/null; then
+    warn "WSL detected. Windows often auto-generates /etc/resolv.conf."
+    warn "If DNS doesn't stick, set in /etc/wsl.conf: [network] generateResolvConf=false, then recreate /etc/resolv.conf."
   fi
+}
+
+backup_file() {
+  local f="$1"
+  [[ -e "$f" || -L "$f" ]] || return 0
+  mkdir -p "$BACKUP_DIR"
+  cp -a "$f" "${BACKUP_DIR}/$(basename "$f").${TIMESTAMP}.bak" || true
+}
+
+ensure_packages() {
+  export DEBIAN_FRONTEND=noninteractive
+  log "Refreshing APT metadata…"
+  apt-get update -y
+  log "Installing resolvconf…"
+  apt-get install -y resolvconf
 }
 
 disable_systemd_resolved() {
-  # If systemd-resolved is running, stop and disable it to avoid conflicts with resolvconf.
-  if systemctl list-unit-files | grep -q '^systemd-resolved\.service'; then
-    if systemctl is-active --quiet systemd-resolved; then
-      echo "Stopping systemd-resolved..."
-      systemctl stop systemd-resolved
-    fi
-    if systemctl is-enabled --quiet systemd-resolved; then
-      echo "Disabling systemd-resolved..."
-      systemctl disable systemd-resolved
-    fi
-    echo "Masking systemd-resolved to prevent it from being started by other services..."
-    systemctl mask systemd-resolved || true
-  fi
-
-  # If /etc/resolv.conf points at systemd stub, replace it with a regular file.
-  if [[ -L /etc/resolv.conf ]]; then
-    local target
-    target="$(readlink -f /etc/resolv.conf || true)"
-    if [[ "$target" =~ /run/systemd/resolve ]]; then
-      echo "Removing systemd-resolved stub symlink at /etc/resolv.conf..."
-      rm -f /etc/resolv.conf
-      # Create a minimal valid file; resolvconf will later manage/overwrite it.
-      printf "nameserver 1.1.1.1\n" >/etc/resolv.conf
-    fi
+  if systemctl is-enabled systemd-resolved >/dev/null 2>&1 || systemctl is-active systemd-resolved >/dev/null 2>&1; then
+    log "Disabling and stopping systemd-resolved…"
+    systemctl disable --now systemd-resolved
+  else
+    log "systemd-resolved already disabled."
   fi
 }
 
-install_resolvconf() {
-  echo "Installing resolvconf..."
-  DEBIAN_FRONTEND=noninteractive apt-get update -y
-  DEBIAN_FRONTEND=noninteractive apt-get install -y resolvconf
-
-  # Ensure the resolvconf service is enabled and started.
-  systemctl enable resolvconf >/dev/null 2>&1 || true
-  systemctl restart resolvconf || true
-}
-
-configure_resolvconf() {
-  # resolvconf builds /etc/resolv.conf from files in /etc/resolvconf/resolv.conf.d/
-  # We'll own the full list via 'base' so order is deterministic.
-  mkdir -p /etc/resolvconf/resolv.conf.d
-
-  # Clear out head/tail to avoid surprises.
-  : > /etc/resolvconf/resolv.conf.d/head
-  : > /etc/resolvconf/resolv.conf.d/tail
-
-  # Set the nameservers in the base file IN ORDER.
-  cat >/etc/resolvconf/resolv.conf.d/base <<EOF
-nameserver ${PRIMARY_DNS}
-nameserver ${SECONDARY_DNS}
-options edns0
+configure_networkmanager_for_resolvconf() {
+  if systemctl list-unit-files | grep -q '^NetworkManager.service'; then
+    log "Configuring NetworkManager to use resolvconf (dns=default)…"
+    mkdir -p "$(dirname "$NM_DROPIN")"
+    cat > "$NM_DROPIN" <<'EOF'
+[main]
+# Use resolvconf to manage /etc/resolv.conf (not systemd-resolved)
+dns=default
 EOF
+    log "Restarting NetworkManager…"
+    systemctl restart NetworkManager || warn "NetworkManager restart returned non-zero; continue."
+  else
+    log "NetworkManager not installed; skipping NM configuration."
+  fi
+}
 
-  echo "Applying resolvconf configuration..."
+point_etc_resolv_conf_to_resolvconf() {
+  # resolvconf uses /run/resolvconf/resolv.conf
+  local target="/run/resolvconf/resolv.conf"
+  if [[ ! -e "$target" ]]; then
+    # Ensure directory exists; resolvconf will populate after -u
+    mkdir -p /run/resolvconf
+    : > "$target"
+  fi
+
+  if [[ -L /etc/resolv.conf || -f /etc/resolv.conf ]]; then
+    if [[ "$(readlink -f /etc/resolv.conf || true)" != "$target" ]]; then
+      log "Repointing /etc/resolv.conf -> $target"
+      backup_file /etc/resolv.conf
+      rm -f /etc/resolv.conf
+      ln -s "$target" /etc/resolv.conf
+    else
+      log "/etc/resolv.conf already points to $target"
+    fi
+  else
+    log "Creating /etc/resolv.conf symlink to $target"
+    ln -s "$target" /etc/resolv.conf
+  fi
+}
+
+write_resolvconf_head() {
+  log "Writing static DNS to ${HEAD_FILE} (will be placed at top of /etc/resolv.conf)…"
+  mkdir -p "$HEAD_DIR"
+  cat > "$HEAD_FILE" <<EOF
+# Added by setup-resolvconf.sh on ${TIMESTAMP}
+# Primary and secondary DNS:
+nameserver ${DNS1}
+nameserver ${DNS2}
+EOF
+}
+
+apply_resolvconf() {
+  log "Regenerating /etc/resolv.conf via resolvconf…"
   resolvconf -u
 }
 
-verify_configuration() {
+show_status() {
   echo
-  echo "Current /etc/resolv.conf:"
-  echo "------------------------------------------------------------"
-  cat /etc/resolv.conf || true
-  echo "------------------------------------------------------------"
+  echo "=== DNS Status ==="
+  echo "Wanted DNS (top of /etc/resolv.conf): ${DNS1}, ${DNS2}"
+  echo
+  ls -l /etc/resolv.conf || true
+  echo
+  echo "First few lines of /etc/resolv.conf:"
+  head -n 10 /etc/resolv.conf || true
+  echo
+  echo "Contents of ${HEAD_FILE}:"
+  sed -n '1,50p' "${HEAD_FILE}" 2>/dev/null || echo "(no head file)"
+  echo
+}
 
-  # Basic verification: ensure both nameservers exist and in the right order.
-  local order ok1 ok2
-  ok1="$(grep -nE "^nameserver[[:space:]]+${PRIMARY_DNS}$" /etc/resolv.conf | cut -d: -f1 || true)"
-  ok2="$(grep -nE "^nameserver[[:space:]]+${SECONDARY_DNS}$" /etc/resolv.conf | cut -d: -f1 || true)"
+revert_to_systemd_resolved() {
+  log "Reverting: re-enabling systemd-resolved and removing resolvconf…"
+  # Restore systemd-resolved first (so DNS works during removal)
+  systemctl enable --now systemd-resolved
 
-  if [[ -z "$ok1" || -z "$ok2" ]]; then
-    echo "ERROR: One or both DNS servers are missing from /etc/resolv.conf." >&2
-    exit 1
-  fi
-  if (( ok1 < ok2 )); then
-    echo "Verification OK: ${PRIMARY_DNS} is listed before ${SECONDARY_DNS}."
+  # Re-point /etc/resolv.conf to systemd's stub file
+  backup_file /etc/resolv.conf
+  rm -f /etc/resolv.conf
+  if [[ -e /run/systemd/resolve/stub-resolv.conf ]]; then
+    ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
   else
-    echo "ERROR: DNS order is incorrect. Expected ${PRIMARY_DNS} before ${SECONDARY_DNS}." >&2
-    exit 1
+    ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
   fi
 
-  echo
-  echo "Done. resolvconf is installed and managing DNS with:"
-  echo "  Primary  : ${PRIMARY_DNS}"
-  echo "  Secondary: ${SECONDARY_DNS}"
+  # Remove resolvconf package
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get purge -y resolvconf || warn "Could not purge resolvconf (maybe not installed)."
+
+  # Clean up NM override if present
+  if [[ -f "$NM_DROPIN" ]]; then
+    rm -f "$NM_DROPIN"
+    systemctl restart NetworkManager || true
+  fi
+
+  log "Revert complete."
 }
 
 main() {
   require_root
-  backup_resolv_conf
+
+  # Parse args
+  case "${1:-}" in
+    --status)
+      show_status
+      exit 0
+      ;;
+    --revert)
+      revert_to_systemd_resolved
+      exit 0
+      ;;
+    "" )
+      ;;
+    *)
+      die "Unknown option: $1 (use --status or --revert or no args)"
+      ;;
+  esac
+
+  wsl_notice
+  ensure_packages
   disable_systemd_resolved
-  install_resolvconf
-  configure_resolvconf
-  verify_configuration
+  configure_networkmanager_for_resolvconf
+  point_etc_resolv_conf_to_resolvconf
+  write_resolvconf_head
+  apply_resolvconf
+  show_status
+
+  log "Done. DNS is now managed by resolvconf with ${DNS1} (primary) and ${DNS2} (secondary)."
 }
 
 main "$@"
