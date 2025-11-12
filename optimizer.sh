@@ -1114,7 +1114,7 @@ while true; do
     printf "${GREEN} 8) ${NC} Unbound DNS ${NC}\n"
     printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
     printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
-    printf "${GREEN} 11) ${NC} Block Port 853 (UFW)${NC}\n"
+    printf "${GREEN} 11) ${NC}Resolvconf DNS${NC}\n"
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
@@ -1171,7 +1171,7 @@ while true; do
             bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh) --AAAA
             ;;
         11)
-            block_port_853
+            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/VPS-Optimizer/refs/heads/main/setup-resolvconf.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
