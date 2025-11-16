@@ -581,7 +581,6 @@ net.ipv4.ip_local_port_range = 1024 65535
 fs.file-max = 67108864
 
 # Network core settings
-net.core.default_qdisc = fq_codel
 net.core.netdev_max_backlog = 250000
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
