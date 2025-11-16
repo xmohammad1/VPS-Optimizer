@@ -4,11 +4,6 @@
 # Author: github.com/opiran-club
 #
 # For more information and updates, visit github.com/opiran-club and @opiranclub on telegram.
-HOST_PATH="/etc/hosts"
-if ! grep -q $(hostname) $HOST_PATH; then
-echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
-echo "Hosts Fixed."
-fi
 CYAN="\e[96m"
 GREEN="\e[92m"
 YELLOW="\e[93m"
@@ -18,9 +13,6 @@ MAGENTA="\e[95m"
 WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
-PROF_PATH="/etc/profile"
-SSH_PATH="/etc/ssh/sshd_config"
-ufw disable
 check_qdisc_support() {
     local algorithm="$1"
 
@@ -546,25 +538,6 @@ swap_maker_1() {
     fi
     sysctl -p
 }
-
-# Helpers for systemd configuration
-backup_file() {
-    local file=$1
-    if [[ -f "$file" && ! -f "${file}.bak" ]]; then
-        cp "$file" "${file}.bak"
-    fi
-}
-
-apply_setting() {
-    local file=$1
-    local key=$2
-    local value=$3
-    if grep -q "^$key" "$file"; then
-        sed -i "s/^$key.*/$key=$value/" "$file"
-    else
-        echo "$key=$value" >> "$file"
-    fi
-}
 remove_old_sysctl() {
     clear
     title=" Network Optimizing "
@@ -581,7 +554,7 @@ net.ipv4.ip_local_port_range = 1024 65535
 fs.file-max = 67108864
 
 # Network core settings
-net.core.netdev_max_backlog = 250000
+net.core.netdev_max_backlog = 32768
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
 net.core.rmem_max = 33554432
@@ -607,7 +580,7 @@ net.ipv4.tcp_keepalive_time = 1200
 net.ipv4.tcp_keepalive_probes = 7
 net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_max_orphans = 819200
-net.ipv4.tcp_max_syn_backlog = 262144
+net.ipv4.tcp_max_syn_backlog = 20480
 net.ipv4.tcp_max_tw_buckets = 1440000
 net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
@@ -649,9 +622,9 @@ net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
 # ARP settings
-net.ipv4.neigh.default.gc_thresh1 = 4096
-net.ipv4.neigh.default.gc_thresh2 = 32768
-net.ipv4.neigh.default.gc_thresh3 = 65536
+net.ipv4.neigh.default.gc_thresh1 = 512
+net.ipv4.neigh.default.gc_thresh2 = 2048
+net.ipv4.neigh.default.gc_thresh3 = 16384
 net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
@@ -660,79 +633,22 @@ net.ipv4.conf.all.arp_announce = 2
 # Kernel settings
 kernel.printk = 4 4 1 7
 kernel.panic = 1
-vm.swappiness = 10
 vm.dirty_ratio = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc 1048576
-* hard nproc 1048576
-* soft nofile 1048576
-* hard nofile 1048576
-root soft nproc 1048576
-root hard nproc 1048576
-root soft nofile 1048576
-root hard nofile 1048576
+* soft nproc 655350
+* hard nproc 655350
+* soft nofile 655350
+* hard nofile 655350
+root soft nproc 655350
+root hard nproc 655350
+root soft nofile 655350
+root hard nofile 655350
 EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
     press_enter
-}
-# Remove old SSH config to prevent duplicates.
-remove_old_ssh_conf() {
-    ## Make a backup of the original sshd_config file
-    cp $SSH_PATH /etc/ssh/sshd_config.bak
-
-    echo 
-    echo "Default SSH Config file Saved. Directory: /etc/ssh/sshd_config.bak"
-    echo 
-    sleep 1
-
-    ## Remove these lines
-    sed -i -e 's/#UseDNS yes/UseDNS no/' \
-        -e 's/#Compression no/Compression yes/' \
-        -e 's/Ciphers .*/Ciphers aes256-ctr,chacha20-poly1305@openssh.com/' \
-        -e '/MaxAuthTries/d' \
-        -e '/MaxSessions/d' \
-        -e '/TCPKeepAlive/d' \
-        -e '/ClientAliveInterval/d' \
-        -e '/ClientAliveCountMax/d' \
-        -e '/AllowAgentForwarding/d' \
-        -e '/AllowTcpForwarding/d' \
-        -e '/GatewayPorts/d' \
-        -e '/PermitTunnel/d' \
-        -e '/X11Forwarding/d' "$SSH_PATH"
-
-}
-# Update SSH config
-update_sshd_conf() {
-    echo 
-    echo "Optimizing SSH..."
-    echo 
-    sleep 0.5
-
-    ## Enable TCP keep-alive messages
-    echo "TCPKeepAlive yes" | tee -a "$SSH_PATH"
-
-    ## Configure client keep-alive messages
-    echo "ClientAliveInterval 3000" | tee -a "$SSH_PATH"
-    echo "ClientAliveCountMax 100" | tee -a "$SSH_PATH"
-
-    ## Allow TCP forwarding
-    echo "AllowTcpForwarding yes" | tee -a "$SSH_PATH"
-
-    ## Enable gateway ports
-    echo "GatewayPorts yes" | tee -a "$SSH_PATH"
-
-    ## Enable tunneling
-    echo "PermitTunnel yes" | tee -a "$SSH_PATH"
-
-    ## Enable X11 graphical interface forwarding
-    echo "X11Forwarding yes" | tee -a "$SSH_PATH"
-
-    ## Restart the SSH service to apply the changes
-    sudo systemctl restart ssh
-    sleep 0.5
 }
 optimize_ssh_configuration() {
     clear
@@ -784,25 +700,7 @@ EOL
     fi
     press_enter
 }
-systemd_optimizations() {
-    local SYSTEM_CONF="/etc/systemd/system.conf"
-    local USER_CONF="/etc/systemd/user.conf"
 
-    echo
-    echo "Optimizing systemd limits..."
-
-    backup_file "$SYSTEM_CONF"
-    backup_file "$USER_CONF"
-
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNOFILE" "1048576"
-    apply_setting "$SYSTEM_CONF" "DefaultLimitNPROC" "1048576"
-
-    apply_setting "$USER_CONF" "DefaultLimitNOFILE" "1048576"
-    apply_setting "$USER_CONF" "DefaultLimitNPROC" "1048576"
-
-    systemctl daemon-reexec
-    echo "systemd limits optimized."
-}
 grub_tuning() {
   clear
   logo
@@ -999,67 +897,6 @@ else
     echo && echo -e "$RED Error: Speedtest is not installed.$NC"
 fi
 }
-
-block_port_853() {
-    clear
-    title="Block Port 853 (DNS over TLS)"
-    logo
-    echo && echo -e "${MAGENTA}${title}${NC}"
-    echo && echo -e "\e[93m+-------------------------------------+\e[0m"
-
-    if ! command -v ufw &>/dev/null; then
-        echo && echo -e "${YELLOW}UFW is not installed. Installing...${NC}"
-        if ! apt-get update >/dev/null 2>&1; then
-            echo && echo -e "${RED}Failed to update package lists. Aborting.${NC}"
-            press_enter
-            return 1
-        fi
-        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y ufw >/dev/null 2>&1; then
-            echo && echo -e "${RED}Failed to install UFW. Aborting.${NC}"
-            press_enter
-            return 1
-        fi
-    fi
-
-    if [ -f /etc/default/ufw ]; then
-        if grep -q '^IPV6=' /etc/default/ufw; then
-            sed -i 's/^IPV6=.*/IPV6=yes/' /etc/default/ufw
-        else
-            echo 'IPV6=yes' >> /etc/default/ufw
-        fi
-    fi
-
-    if ! ufw default allow incoming >/dev/null 2>&1; then
-        echo && echo -e "${RED}Failed to set default incoming policy. Aborting.${NC}"
-        press_enter
-        return 1
-    fi
-
-    if ! ufw default allow outgoing >/dev/null 2>&1; then
-        echo && echo -e "${RED}Failed to set default outgoing policy. Aborting.${NC}"
-        press_enter
-        return 1
-    fi
-
-    if ! ufw default allow routed >/dev/null 2>&1; then
-        echo && echo -e "${RED}Failed to set default routed policy. Aborting.${NC}"
-        press_enter
-        return 1
-    fi
-
-    ufw deny in proto any to any port 853 comment 'Block DoT incoming' >/dev/null 2>&1
-    ufw deny out proto any to any port 853 comment 'Block DoT outgoing' >/dev/null 2>&1
-    ufw route deny proto any to any port 853 comment 'Block DoT routed' >/dev/null 2>&1
-
-    if ufw --force enable >/dev/null 2>&1; then
-        echo && echo -e "${GREEN}Port 853 blocked for all directions (IPv4/IPv6) while default policies allow other traffic.${NC}"
-    else
-        echo && echo -e "${RED}Failed to enable UFW. Please check UFW status manually.${NC}"
-    fi
-
-    press_enter
-}
-
 benchmark() {
     clear
     title="Benchmark (iperf test)"
@@ -1110,11 +947,7 @@ while true; do
     printf "${GREEN} 5) ${NC} BBR Optimization${NC}\n"
     echo && printf "${GREEN} 6) ${NC} Speedtest${NC}\n"
     printf "${GREEN} 7) ${NC} Benchmark VPS${NC}\n"
-    printf "${GREEN} 8) ${NC} Unbound DNS ${NC}\n"
-    printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
-    printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
-    printf "${GREEN} 11) ${NC}Resolvconf DNS${NC}\n"
-    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
+    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
     read -r choice
@@ -1127,9 +960,7 @@ while true; do
             fun_bar "Creating swap file with 512MB" swap_maker_1
             fun_bar "Updating sysctl configuration" remove_old_sysctl
             fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
-            update_sshd_conf
             ask_bbr_version
-            systemd_optimizations
             final
             ;;
         2)
@@ -1159,19 +990,7 @@ while true; do
             ;;
         7)
             benchmark
-            ;;
-        8)
-            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/main/set-unbound-dns.sh)
-            ;;
-        9)
-            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh)
-            ;;
-        10)
-            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh) --AAAA
-            ;;
-        11)
-            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/VPS-Optimizer/refs/heads/main/setup-resolvconf.sh)
-            ;;
+            ;;        
         E|e)
             echo && echo -e "$RED Exiting...$NC"
             exit 0
@@ -1182,4 +1001,5 @@ while true; do
     esac
     echo && echo -e "\n${RED}Press Enter to continue...${NC}"
     read -r
+done
 done
