@@ -13,6 +13,11 @@ MAGENTA="\e[95m"
 WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
+HOST_PATH="/etc/hosts"
+if ! grep -q $(hostname) $HOST_PATH; then
+echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+echo "Hosts Fixed."
+fi
 check_qdisc_support() {
     local algorithm="$1"
 
@@ -950,6 +955,9 @@ while true; do
     printf "${GREEN} 5) ${NC} BBR Optimization${NC}\n"
     echo && printf "${GREEN} 6) ${NC} Speedtest${NC}\n"
     printf "${GREEN} 7) ${NC} Benchmark VPS${NC}\n"
+    printf "${GREEN} 8) ${NC} Unbound DNS ${NC}\n"
+    printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
+    printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
@@ -994,6 +1002,15 @@ while true; do
         7)
             benchmark
             ;;        
+        8)
+            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/main/set-unbound-dns.sh)
+            ;;
+        9)
+            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh)
+            ;;
+        10)
+            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh) --AAAA
+            ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
             exit 0
