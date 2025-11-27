@@ -65,7 +65,7 @@ update_systemd_limits() {
     
     echo "[+] Done."
 }
-update_limit
+update_systemd_limits
 ask_bbr_version_1() {
     cp /etc/sysctl.conf /etc/sysctl.conf.bak
     echo && echo -e "${YELLOW}Installing and configuring BBRv1 + FQ...${NC}"
