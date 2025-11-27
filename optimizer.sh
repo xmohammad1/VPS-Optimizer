@@ -31,6 +31,41 @@ check_qdisc_support() {
         return 1
     fi
 }
+update_systemd_limits() {
+    NEW_NOFILE="655350"
+    NEW_NPROC="655350"
+    
+    SYSTEM_CONF="/etc/systemd/system.conf"
+    USER_CONF="/etc/systemd/user.conf"
+    
+    update_limit() {
+        local file="$1"
+        local key="$2"
+        local value="$3"
+    
+        if grep -q "^$key=" "$file"; then
+            sed -i "s/^$key=.*/$key=$value/" "$file"
+        else
+            echo "$key=$value" >> "$file"
+        fi
+    }
+    
+    echo "==== Updating systemd limit settings ===="
+    
+    # --- Update system.conf ---
+    update_limit "$SYSTEM_CONF" "DefaultLimitNOFILE" "$NEW_NOFILE"
+    update_limit "$SYSTEM_CONF" "DefaultLimitNPROC" "$NEW_NPROC"
+    
+    # --- Update user.conf ---
+    update_limit "$USER_CONF" "DefaultLimitNOFILE" "$NEW_NOFILE"
+    update_limit "$USER_CONF" "DefaultLimitNPROC" "$NEW_NPROC"
+    
+    echo "[+] Reloading systemd..."
+    systemctl daemon-reexec
+    
+    echo "[+] Done."
+}
+update_limit
 ask_bbr_version_1() {
     cp /etc/sysctl.conf /etc/sysctl.conf.bak
     echo && echo -e "${YELLOW}Installing and configuring BBRv1 + FQ...${NC}"
