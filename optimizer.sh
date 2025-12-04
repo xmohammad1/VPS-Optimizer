@@ -14,6 +14,11 @@ WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
 HOST_PATH="/etc/hosts"
+SYSCTL_CONF="/etc/sysctl.d/99-vpn-optimizer.conf"
+SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
+
+mkdir -p /etc/sysctl.d
+touch "$SYSCTL_CONF"
 if ! grep -q $(hostname) $HOST_PATH; then
 echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
 echo "Hosts Fixed."
@@ -67,18 +72,18 @@ update_systemd_limits() {
 }
 update_systemd_limits
 ask_bbr_version_1() {
-    cp /etc/sysctl.conf /etc/sysctl.conf.bak
+    cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
     echo && echo -e "${YELLOW}Installing and configuring BBRv1 + FQ...${NC}"
-    sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
-    sed -i '/^net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
-    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-    sysctl -p
+    sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
+    sed -i '/^net.ipv4.tcp_congestion_control/d' "$SYSCTL_CONF"
+    echo "net.core.default_qdisc=fq" >> "$SYSCTL_CONF"
+    echo "net.ipv4.tcp_congestion_control=bbr" >> "$SYSCTL_CONF"
+    sysctl --system
         if [ $? -eq 0 ]; then
             echo && echo -e "${GREEN}Kernel parameter optimization for OpenVZ was successful.${NC}"
         else
             echo && echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"
-            mv /etc/sysctl.conf.bak /etc/sysctl.conf
+            mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"
         fi
 }
 fun_bar() {
@@ -544,10 +549,10 @@ swap_maker() {
         echo && printf "\e[93m+-------------------------------------+\e[0m\n"
         
         swap_value=10
-        sed -i "/^vm\.swappiness=/c vm.swappiness=$swap_value" /etc/sysctl.conf || {
+        sed -i "/^vm\.swappiness=/c vm.swappiness=$swap_value" "$SYSCTL_CONF" || {
             echo && echo -e "${RED}Error setting swappiness. Manual modification required.${NC}"
         }
-        sysctl -p
+        sysctl --system
         
         echo && echo -e "${GREEN}Swap file created and vm.swappiness set to ${RED}$swap_value${NC}."
         break
@@ -571,12 +576,12 @@ swap_maker_1() {
     echo "/swap swap swap defaults 0 0" >> /etc/fstab
     swapon -s | grep '/swap'
     swap_value=10
-    if grep -q "^vm.swappiness" /etc/sysctl.conf; then
-        sed -i "s/^vm.swappiness=.*/vm.swappiness=$swap_value/" /etc/sysctl.conf
+    if grep -q "^vm.swappiness" "$SYSCTL_CONF"; then
+        sed -i "s/^vm.swappiness=.*/vm.swappiness=$swap_value/" "$SYSCTL_CONF"
     else
-        echo "vm.swappiness=$swap_value" >> /etc/sysctl.conf
+        echo "vm.swappiness=$swap_value" >> "$SYSCTL_CONF"
     fi
-    sysctl -p
+    sysctl --system
 }
 remove_old_sysctl() {
     clear
@@ -585,7 +590,7 @@ remove_old_sysctl() {
     echo && echo -e "${MAGENTA}$title${NC}"
     echo && echo -e "\e[93m+-------------------------------------+\e[0m"
     sed -i '/1000000/d' /etc/profile
-cat <<EOL > /etc/sysctl.conf
+cat <<EOL > "$SYSCTL_CONF"
 # System Configuration Settings for Improved Performance and Security
 net.ipv4.ip_forward = 1
 net.ipv6.conf.all.forwarding = 1
@@ -692,7 +697,7 @@ root hard nproc 1048576
 root soft nofile 1048576
 root hard nofile 1048576
 EOL
-    sysctl -p
+    sysctl --system
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
     press_enter
 }
@@ -860,13 +865,13 @@ queuing() {
 case $choice in
       1)
             # BBR with selected queuing algorithm
-            cp /etc/sysctl.conf /etc/sysctl.conf.bak
+            cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
             queuing
             # Apply the selected queuing algorithm and BBR settings
-            sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
-            echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
-            echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-            sysctl -p || mv /etc/sysctl.conf.bak /etc/sysctl.conf
+            sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
+            echo "net.core.default_qdisc=$algorithm" >> "$SYSCTL_CONF"
+            echo "net.ipv4.tcp_congestion_control=bbr" >> "$SYSCTL_CONF"
+            sysctl --system || mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"
             ;;
     2)
         echo -e "${YELLOW}Installing and configuring XanMod & BBRv3...${NC}"
@@ -878,25 +883,25 @@ case $choice in
         fi
         ;;
     3)
-        cp /etc/sysctl.conf /etc/sysctl.conf.bak
+        cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
         check_Hybla
         queuing
-        sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
-        echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
-        sed -i '/^net.ipv4.tcp_congestion_control=/c\net.ipv4.tcp_congestion_control=hybla' /etc/sysctl.conf
+        sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
+        echo "net.core.default_qdisc=$algorithm" >> "$SYSCTL_CONF"
+        sed -i '/^net.ipv4.tcp_congestion_control=/c\net.ipv4.tcp_congestion_control=hybla' "$SYSCTL_CONF"
         # Additional sysctl settings here
-        sysctl -p || { echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"; mv /etc/sysctl.conf.bak /etc/sysctl.conf; }
+        sysctl --system || { echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"; mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"; }
         echo -e "${GREEN}Kernel parameter optimization for Hybla was successful.${NC}"
         ;;
     4)
         echo -e "${YELLOW}Optimizing kernel parameters for OpenVZ BBR...${NC}"
         if [[ -d "/proc/vz" && -e /sys/class/net/venet0 ]]; then
-            cp /etc/sysctl.conf /etc/sysctl.conf.bak
-            sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
-            sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+            cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
+            sed -i '/net.core.default_qdisc/d' "$SYSCTL_CONF"
+            sed -i '/net.ipv4.tcp_congestion_control/d' "$SYSCTL_CONF"
             tc qdisc add dev venet0 root fq_codel
-            sysctl -w net.ipv4.tcp_congestion_control=bbr || { echo -e "${RED}Optimization failed.${NC}"; mv /etc/sysctl.conf.bak /etc/sysctl.conf; exit 1; }
-            sysctl -p
+            sysctl -w net.ipv4.tcp_congestion_control=bbr || { echo -e "${RED}Optimization failed.${NC}"; mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"; exit 1; }
+            sysctl --system
             echo -e "${GREEN}Kernel parameter optimization for OpenVZ was successful.${NC}"
         else
             echo -e "${RED}This system is not OpenVZ or lacks venet0 support. No changes were made.${NC}"

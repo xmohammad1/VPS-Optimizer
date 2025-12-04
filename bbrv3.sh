@@ -25,6 +25,11 @@ RED="\e[91m"
 BLUE="\e[94m"
 MAGENTA="\e[95m"
 NC="\e[0m"
+SYSCTL_CONF="/etc/sysctl.d/99-vpn-optimizer.conf"
+SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
+
+mkdir -p /etc/sysctl.d
+touch "$SYSCTL_CONF"
 
 ask_reboot() {
 echo ""
@@ -237,10 +242,10 @@ bbrv3() {
         y|Y)
             clear
             echo -e "${YELLOW}Backing up original kernel parameter configuration... ${NC}"
-            cp /etc/sysctl.conf /etc/sysctl.conf.bak
+            cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
             echo -e "${YELLOW}Optimizing kernel parameters for better network performance... ${NC}"
 
-            cat <<EOL >> /etc/sysctl.conf
+            cat <<EOL >> "$SYSCTL_CONF"
 # BBRv3 Optimization for Better Network Performance
 net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_sack = 1
@@ -252,12 +257,12 @@ net.ipv4.tcp_wmem = 4096 65536 16777216
 net.ipv4.tcp_congestion_control = bbr
 EOL
 
-            sysctl -p
+            sysctl --system
             if [ $? -eq 0 ]; then
                 echo -e "${GREEN}Kernel parameter optimization for better network performance was successful.${NC}"
             else
                 echo -e "${RED}Kernel parameter optimization failed. Restoring the original configuration...${NC}"
-                mv /etc/sysctl.conf.bak /etc/sysctl.conf
+                mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"
             fi
             ;;
         n|N)
