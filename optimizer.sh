@@ -643,8 +643,8 @@ net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
 
-# Max connections capacity (2M)
-net.netfilter.nf_conntrack_max = 2097152
+# --- conntrack
+net.netfilter.nf_conntrack_max = 8388608
 net.netfilter.nf_conntrack_tcp_timeout_established = 1800
 net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
 net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
@@ -675,9 +675,9 @@ net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
 # ARP settings
-net.ipv4.neigh.default.gc_thresh1 = 512
-net.ipv4.neigh.default.gc_thresh2 = 2048
-net.ipv4.neigh.default.gc_thresh3 = 16384
+net.ipv4.neigh.default.gc_thresh1 = 1024
+net.ipv4.neigh.default.gc_thresh2 = 4096
+net.ipv4.neigh.default.gc_thresh3 = 32768
 net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
