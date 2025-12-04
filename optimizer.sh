@@ -14,7 +14,7 @@ WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
 HOST_PATH="/etc/hosts"
-SYSCTL_CONF="/etc/sysctl.d/99-vpn-optimizer.conf"
+SYSCTL_CONF="/etc/sysctl.d/vpn-optimizer.conf"
 SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
 
 mkdir -p /etc/sysctl.d
