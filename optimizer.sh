@@ -593,6 +593,7 @@ remove_old_sysctl() {
 cat <<EOL > "$SYSCTL_CONF"
 # System Configuration Settings for Improved Performance and Security
 net.ipv4.ip_forward = 1
+net.ipv4.conf.all.forwarding = 1
 net.ipv6.conf.all.forwarding = 1
 net.ipv4.ip_local_port_range = 1024 65535
 # File limits
