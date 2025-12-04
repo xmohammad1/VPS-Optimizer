@@ -35,7 +35,7 @@ ulimit -n 51200
 ```
 دستور زیر را اجرا کنید:
 ```
-nano /etc/sysctl.conf
+nano /etc/sysctl.d/99-vpn-optimizer.conf
 ```
 خطوط زیر را در انتهای فایل اضافه کنید:
 
