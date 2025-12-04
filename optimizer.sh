@@ -32,8 +32,8 @@ check_qdisc_support() {
     fi
 }
 update_systemd_limits() {
-    NEW_NOFILE="655350"
-    NEW_NPROC="655350"
+    NEW_NOFILE="1048576"
+    NEW_NPROC="1048576"
     
     SYSTEM_CONF="/etc/systemd/system.conf"
     USER_CONF="/etc/systemd/user.conf"
@@ -594,12 +594,12 @@ net.ipv4.ip_local_port_range = 1024 65535
 fs.file-max = 67108864
 
 # Network core settings
-net.core.netdev_max_backlog = 32768
+net.core.netdev_max_backlog = 65535
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
-net.core.rmem_max = 33554432
+net.core.rmem_max = 67108864
 net.core.rmem_default = 1048576
-net.core.wmem_max = 33554432
+net.core.wmem_max = 67108864
 net.core.wmem_default = 1048576
 
 # Increase IP Fragmentation Timeout
@@ -613,16 +613,16 @@ vm.dirty_expire_centisecs = 3000
 vm.dirty_writeback_centisecs = 500
 
 # TCP settings
-net.ipv4.tcp_rmem = 16384 1048576 33554432
-net.ipv4.tcp_wmem = 16384 1048576 33554432
-net.ipv4.tcp_fin_timeout = 25
-net.ipv4.tcp_keepalive_time = 1200
+net.ipv4.tcp_rmem = 16384 1048576 67108864
+net.ipv4.tcp_wmem = 16384 1048576 67108864
+net.ipv4.tcp_fin_timeout = 60
+net.ipv4.tcp_keepalive_time = 1800
 net.ipv4.tcp_keepalive_probes = 7
-net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_intvl = 60
 net.ipv4.tcp_max_orphans = 819200
-net.ipv4.tcp_max_syn_backlog = 20480
+net.ipv4.tcp_max_syn_backlog = 65535
 net.ipv4.tcp_max_tw_buckets = 1440000
-net.ipv4.tcp_mem = 65536 1048576 33554432
+net.ipv4.tcp_mem = 65536 1048576 67108864
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
@@ -637,8 +637,14 @@ net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
 
+# Max connections capacity (2M)
+net.netfilter.nf_conntrack_max = 2097152
+net.netfilter.nf_conntrack_tcp_timeout_established = 1800
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
+
 # UDP settings
-net.ipv4.udp_mem = 65536 1048576 33554432
+net.ipv4.udp_mem = 65536 1048576 67108864
 
 # IPv6 settings
 net.ipv6.conf.all.disable_ipv6 = 0
@@ -677,14 +683,14 @@ vm.dirty_ratio = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc 655350
-* hard nproc 655350
-* soft nofile 655350
-* hard nofile 655350
-root soft nproc 655350
-root hard nproc 655350
-root soft nofile 655350
-root hard nofile 655350
+* soft nproc 1048576
+* hard nproc 1048576
+* soft nofile 1048576
+* hard nofile 1048576
+root soft nproc 1048576
+root hard nproc 1048576
+root soft nofile 1048576
+root hard nofile 1048576
 EOL
     sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
