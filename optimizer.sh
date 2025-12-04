@@ -636,6 +636,7 @@ net.ipv4.tcp_retries2 = 5
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
+net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_adv_win_scale = 0
@@ -687,6 +688,7 @@ net.ipv4.conf.all.arp_announce = 2
 kernel.printk = 4 4 1 7
 kernel.panic = 1
 vm.dirty_ratio = 15
+kernel.pid_max = 4194303
 EOL
 
 cat <<EOL > /etc/security/limits.conf
