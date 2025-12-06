@@ -37,8 +37,8 @@ check_qdisc_support() {
     fi
 }
 update_systemd_limits() {
-    NEW_NOFILE="1048576"
-    NEW_NPROC="1048576"
+    NEW_NOFILE="2097152"
+    NEW_NPROC="2097152"
     
     SYSTEM_CONF="/etc/systemd/system.conf"
     USER_CONF="/etc/systemd/user.conf"
@@ -591,44 +591,38 @@ remove_old_sysctl() {
     echo && echo -e "\e[93m+-------------------------------------+\e[0m"
     sed -i '/1000000/d' /etc/profile
 cat <<EOL > "$SYSCTL_CONF"
-# System Configuration Settings for Improved Performance and Security
 net.ipv4.ip_forward = 1
 net.ipv4.conf.all.forwarding = 1
 net.ipv6.conf.all.forwarding = 1
 net.ipv4.ip_local_port_range = 1024 65535
-# File limits
-fs.file-max = 67108864
+fs.file-max = 134217728
 
-# Network core settings
-net.core.netdev_max_backlog = 65535
-net.core.optmem_max = 262144
-net.core.somaxconn = 65536
-net.core.rmem_max = 67108864
-net.core.rmem_default = 1048576
-net.core.wmem_max = 67108864
-net.core.wmem_default = 1048576
+net.core.netdev_max_backlog = 524288
+net.core.optmem_max = 524288
+net.core.somaxconn = 262144
+net.core.rmem_max = 134217728
+net.core.rmem_default = 2097152
+net.core.wmem_max = 134217728
+net.core.wmem_default = 2097152
 
-# Increase IP Fragmentation Timeout
-net.ipv4.ipfrag_high_thresh = 524288
-net.ipv4.ipfrag_low_thresh = 446464
-net.ipv4.ipfrag_time = 60
+net.ipv4.ipfrag_high_thresh = 1048576
+net.ipv4.ipfrag_low_thresh = 786432
+net.ipv4.ipfrag_time = 120
 
-# Memory Optimization
 vm.dirty_background_ratio = 5
 vm.dirty_expire_centisecs = 3000
 vm.dirty_writeback_centisecs = 500
 
-# TCP settings
-net.ipv4.tcp_rmem = 16384 1048576 67108864
-net.ipv4.tcp_wmem = 16384 1048576 67108864
-net.ipv4.tcp_fin_timeout = 60
-net.ipv4.tcp_keepalive_time = 1800
-net.ipv4.tcp_keepalive_probes = 7
-net.ipv4.tcp_keepalive_intvl = 60
-net.ipv4.tcp_max_orphans = 819200
-net.ipv4.tcp_max_syn_backlog = 65535
-net.ipv4.tcp_max_tw_buckets = 1440000
-net.ipv4.tcp_mem = 65536 1048576 67108864
+net.ipv4.tcp_rmem = 32768 2097152 134217728
+net.ipv4.tcp_wmem = 32768 2097152 134217728
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_probes = 5
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_max_orphans = 1638400
+net.ipv4.tcp_max_syn_backlog = 262144
+net.ipv4.tcp_max_tw_buckets = 2880000
+net.ipv4.tcp_mem = 262144 4194304 134217728
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
@@ -643,31 +637,30 @@ net.ipv4.tcp_adv_win_scale = 0
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fastopen_connect = 1
+net.ipv4.tcp_low_latency = 1
 
-# --- conntrack
-net.netfilter.nf_conntrack_max = 8388608
-net.netfilter.nf_conntrack_tcp_timeout_established = 1800
-net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
-net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
-net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 30
+net.netfilter.nf_conntrack_max = 33554432
+net.netfilter.nf_conntrack_tcp_timeout_established = 3600
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 30
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 15
+net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 15
+net.netfilter.nf_conntrack_udp_timeout = 60
+net.netfilter.nf_conntrack_udp_timeout_stream = 180
 
-# UDP settings
-net.ipv4.udp_mem = 65536 1048576 67108864
+net.ipv4.udp_mem = 262144 4194304 134217728
 
-# IPv6 settings
 net.ipv6.conf.all.disable_ipv6 = 0
 net.ipv6.conf.default.disable_ipv6 = 0
 net.ipv6.conf.lo.disable_ipv6 = 0
 
-# Unix domain sockets
-net.unix.max_dgram_qlen = 256
+net.unix.max_dgram_qlen = 512
 
-# VM settings
-vm.min_free_kbytes = 65536
+vm.min_free_kbytes = 131072
 vm.swappiness = 10
 vm.vfs_cache_pressure = 100
 
-# Packet filtering
 net.ipv4.conf.default.rp_filter = 2
 net.ipv4.conf.all.rp_filter = 2
 net.ipv4.conf.all.accept_source_route = 0
@@ -675,16 +668,14 @@ net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
-# ARP settings
-net.ipv4.neigh.default.gc_thresh1 = 1024
-net.ipv4.neigh.default.gc_thresh2 = 4096
-net.ipv4.neigh.default.gc_thresh3 = 32768
+net.ipv4.neigh.default.gc_thresh1 = 2048
+net.ipv4.neigh.default.gc_thresh2 = 8192
+net.ipv4.neigh.default.gc_thresh3 = 65536
 net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
 net.ipv4.conf.all.arp_announce = 2
 
-# Kernel settings
 kernel.printk = 4 4 1 7
 kernel.panic = 1
 vm.dirty_ratio = 15
@@ -692,14 +683,14 @@ kernel.pid_max = 4194303
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc 1048576
-* hard nproc 1048576
-* soft nofile 1048576
-* hard nofile 1048576
-root soft nproc 1048576
-root hard nproc 1048576
-root soft nofile 1048576
-root hard nofile 1048576
+* soft nproc 2097152
+* hard nproc 2097152
+* soft nofile 2097152
+* hard nofile 2097152
+root soft nproc 2097152
+root hard nproc 2097152
+root soft nofile 2097152
+root hard nofile 2097152
 EOL
     sysctl --system
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
@@ -794,8 +785,11 @@ ask_bbr_version() {
             return 1
         fi
     }
+   _exists() {
+        local cmd="$1"
+        command -v "$cmd" >/dev/null 2>&1
+    }
    check_os() {
-        # Check virtualization and warn if LXC or OpenVZ, as they may not support some features
         if _exists "virt-what"; then
             virt="$(virt-what)"
         elif _exists "systemd-detect-virt"; then
@@ -1017,7 +1011,7 @@ while true; do
             fun_bar "Installing useful packages" installations
             fun_bar "Creating swap file with 512MB" swap_maker_1
             fun_bar "Updating sysctl configuration" remove_old_sysctl
-            fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
+            fun_bar "Updating and modifying SSH configuration" optimize_ssh_configuration
             ask_bbr_version
             final
             ;;
@@ -1030,7 +1024,7 @@ while true; do
             swap_maker
             remove_old_sysctl
             grub_tuning
-            remove_old_ssh_conf
+            optimize_ssh_configuration
             ask_bbr_version
             final
             ;;
