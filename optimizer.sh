@@ -19,6 +19,18 @@ SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
 
 mkdir -p /etc/sysctl.d
 touch "$SYSCTL_CONF"
+# Load TCP BBR module
+if ! lsmod | grep -q tcp_bbr; then
+    modprobe tcp_bbr
+fi
+
+# Ensure modules load at boot
+cat > /etc/modules-load.d/vpn-performance.conf << 'EOF'
+# VPN performance modules
+tcp_bbr
+nf_conntrack
+EOF
+
 if ! grep -q $(hostname) $HOST_PATH; then
 echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
 echo "Hosts Fixed."
@@ -650,6 +662,8 @@ net.netfilter.nf_conntrack_tcp_timeout_established = 1800
 net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
 net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
 net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 30
+net.netfilter.nf_conntrack_udp_timeout = 60
+net.netfilter.nf_conntrack_udp_timeout_stream = 120
 
 # UDP settings
 net.ipv4.udp_mem = 65536 1048576 67108864
@@ -683,7 +697,15 @@ net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
 net.ipv4.conf.all.arp_announce = 2
+# IPv6 neighbor cache size
+net.ipv6.neigh.default.gc_thresh1 = 1024
+net.ipv6.neigh.default.gc_thresh2 = 4096
+net.ipv6.neigh.default.gc_thresh3 = 32768
 
+# IPv4 neighbor cache size (ARP)
+net.ipv4.neigh.default.gc_thresh1 = 1024
+net.ipv4.neigh.default.gc_thresh2 = 4096
+net.ipv4.neigh.default.gc_thresh3 = 32768
 # Kernel settings
 kernel.printk = 4 4 1 7
 kernel.panic = 1
