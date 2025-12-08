@@ -16,6 +16,7 @@ BOLD=$(tput bold)
 HOST_PATH="/etc/hosts"
 SYSCTL_CONF="/etc/sysctl.d/vpn-optimizer.conf"
 SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
+PROF_PATH="/etc/profile"
 
 mkdir -p /etc/sysctl.d
 touch "$SYSCTL_CONF"
@@ -35,6 +36,44 @@ if ! grep -q $(hostname) $HOST_PATH; then
 echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
 echo "Hosts Fixed."
 fi
+limits_optimizations() {
+echo
+echo -e "${YELLOW}Optimizing System Limits...${NC}"
+echo
+sleep 0.5
+sed -i '/ulimit -c/d' $PROF_PATH
+sed -i '/ulimit -d/d' $PROF_PATH
+sed -i '/ulimit -f/d' $PROF_PATH
+sed -i '/ulimit -i/d' $PROF_PATH
+sed -i '/ulimit -l/d' $PROF_PATH
+sed -i '/ulimit -m/d' $PROF_PATH
+sed -i '/ulimit -n/d' $PROF_PATH
+sed -i '/ulimit -q/d' $PROF_PATH
+sed -i '/ulimit -s/d' $PROF_PATH
+sed -i '/ulimit -t/d' $PROF_PATH
+sed -i '/ulimit -u/d' $PROF_PATH
+sed -i '/ulimit -v/d' $PROF_PATH
+sed -i '/ulimit -x/d' $PROF_PATH
+sed -i '/ulimit -s/d' $PROF_PATH
+echo "ulimit -c unlimited" | tee -a $PROF_PATH
+echo "ulimit -d unlimited" | tee -a $PROF_PATH
+echo "ulimit -f unlimited" | tee -a $PROF_PATH
+echo "ulimit -i unlimited" | tee -a $PROF_PATH
+echo "ulimit -l unlimited" | tee -a $PROF_PATH
+echo "ulimit -m unlimited" | tee -a $PROF_PATH
+echo "ulimit -n 1048576" | tee -a $PROF_PATH
+echo "ulimit -q unlimited" | tee -a $PROF_PATH
+echo "ulimit -s -H 65536" | tee -a $PROF_PATH
+echo "ulimit -s 32768" | tee -a $PROF_PATH
+echo "ulimit -t unlimited" | tee -a $PROF_PATH
+echo "ulimit -u unlimited" | tee -a $PROF_PATH
+echo "ulimit -v unlimited" | tee -a $PROF_PATH
+echo "ulimit -x unlimited" | tee -a $PROF_PATH
+echo
+echo -e "${GREEN}System Limits are Optimized.${NC}"
+echo
+sleep 0.5
+}
 check_qdisc_support() {
     local algorithm="$1"
 
@@ -644,14 +683,14 @@ net.ipv4.tcp_mem = 65536 1048576 67108864
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
-net.ipv4.tcp_retries2 = 5
+net.ipv4.tcp_retries2 = 8
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
 net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
-net.ipv4.tcp_adv_win_scale = 0
+net.ipv4.tcp_adv_win_scale = -2
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
@@ -679,7 +718,7 @@ net.unix.max_dgram_qlen = 256
 # VM settings
 vm.min_free_kbytes = 65536
 vm.swappiness = 10
-vm.vfs_cache_pressure = 100
+vm.vfs_cache_pressure = 250
 
 # Packet filtering
 net.ipv4.conf.default.rp_filter = 2
