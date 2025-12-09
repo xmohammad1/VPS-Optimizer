@@ -1066,7 +1066,8 @@ while true; do
     printf "${GREEN} 8) ${NC} Unbound DNS ${NC}\n"
     printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
     printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
-    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
+    printf "${GREEN} 11) ${NC} Optimize Network ${NC}\n"
+    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
     read -r choice
@@ -1118,6 +1119,9 @@ while true; do
             ;;
         10)
             bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/find-good-dns.sh) --AAAA
+            ;;
+        11)
+            bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/optimize_net.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
