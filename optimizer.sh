@@ -690,7 +690,7 @@ net.ipv4.tcp_dsack = 1
 net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
-net.ipv4.tcp_adv_win_scale = -2
+net.ipv4.tcp_adv_win_scale = 0
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
@@ -718,7 +718,7 @@ net.unix.max_dgram_qlen = 256
 # VM settings
 vm.min_free_kbytes = 65536
 vm.swappiness = 10
-vm.vfs_cache_pressure = 250
+vm.vfs_cache_pressure = 100
 
 # Packet filtering
 net.ipv4.conf.default.rp_filter = 2
