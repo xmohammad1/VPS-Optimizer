@@ -1067,6 +1067,7 @@ while true; do
     printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
     printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
     printf "${GREEN} 11) ${NC} Optimize Network ${NC}\n"
+    printf "${GREEN} 12) ${NC} Abuse Defender ${NC}\n"
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
@@ -1122,6 +1123,9 @@ while true; do
             ;;
         11)
             bash <(curl -LS https://raw.githubusercontent.com/xmohammad1/bbr/refs/heads/main/optimize_net.sh)
+            ;;
+        12)
+            bash <(curl -s https://raw.githubusercontent.com/Kiya6955/Abuse-Defender/main/abuse-defender.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
