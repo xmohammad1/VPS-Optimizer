@@ -27,9 +27,20 @@ MAGENTA="\e[95m"
 NC="\e[0m"
 SYSCTL_CONF="/etc/sysctl.d/99-vpn-optimizer.conf"
 SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
+SYSCTL_MAIN_CONF="/etc/sysctl.conf"
 
 mkdir -p /etc/sysctl.d
 touch "$SYSCTL_CONF"
+touch "$SYSCTL_MAIN_CONF"
+
+sync_sysctl_conf() {
+    cp "$SYSCTL_CONF" "$SYSCTL_MAIN_CONF"
+}
+
+apply_sysctl_changes() {
+    sync_sysctl_conf
+    sysctl --system "$@"
+}
 
 ask_reboot() {
 echo ""
@@ -257,12 +268,12 @@ net.ipv4.tcp_wmem = 4096 65536 16777216
 net.ipv4.tcp_congestion_control = bbr
 EOL
 
-            sysctl --system
-            if [ $? -eq 0 ]; then
+            if apply_sysctl_changes; then
                 echo -e "${GREEN}Kernel parameter optimization for better network performance was successful.${NC}"
             else
                 echo -e "${RED}Kernel parameter optimization failed. Restoring the original configuration...${NC}"
                 mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"
+                sync_sysctl_conf
             fi
             ;;
         n|N)
