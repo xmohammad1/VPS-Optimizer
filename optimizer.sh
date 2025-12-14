@@ -149,36 +149,6 @@ ask_bbr_version_1() {
         sync_sysctl_conf
     fi
 }
-fun_bar() {
-    local title="$1"
-    local command1="$2"
-    local command2="$3"
-    (
-        [[ -e $HOME/fim ]] && rm $HOME/fim
-        $command1 -y > /dev/null 2>&1
-        $command2 -y > /dev/null 2>&1
-        touch $HOME/fim
-    ) &
-    tput civis
-    echo -ne "  ${BOLD}${YELLOW}$title${BOLD} - ${YELLOW}["
-    while true; do
-        for ((i = 0; i < 18; i++)); do
-            echo -ne "${RED}#"
-            sleep 0.1
-        done
-        if [[ -e "$HOME/fim" ]]; then
-            rm "$HOME/fim"
-            break
-        fi
-        echo -e "${YELLOW}]"
-        sleep 0.5
-        tput cuu1
-        tput el 
-        echo -ne "  ${BOLD}${YELLOW}$title${BOLD} - ${YELLOW}["
-    done
-    echo -e "${YELLOW}]${WHITE} -${GREEN} DONE!${WHITE}"
-    tput cnorm
-}
 if [ "$EUID" -ne 0 ]; then
 echo && echo -e "\n ${RED}This script must be run as root.${NC}"
 exit 1
@@ -1088,12 +1058,18 @@ while true; do
         1)
             clear
             setup_environment
-            fun_bar "Updating and replacing DNS nameserver" fix_dns
-            fun_bar "Complete system update and upgrade" complete_update
-            fun_bar "Installing useful packages" installations
-            fun_bar "Creating swap file with 512MB" swap_maker_1
-            fun_bar "Updating sysctl configuration" remove_old_sysctl
-            fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
+            echo && echo -e "${YELLOW}Updating and replacing DNS nameserver...${NC}"
+            fix_dns
+            echo && echo -e "${YELLOW}Complete system update and upgrade...${NC}"
+            complete_update
+            echo && echo -e "${YELLOW}Installing useful packages...${NC}"
+            installations
+            echo && echo -e "${YELLOW}Creating swap file with 512MB...${NC}"
+            swap_maker_1
+            echo && echo -e "${YELLOW}Updating sysctl configuration...${NC}"
+            remove_old_sysctl
+            echo && echo -e "${YELLOW}Updating and modifying SSH configuration...${NC}"
+            remove_old_ssh_conf
             ask_bbr_version
             final
             ;;
