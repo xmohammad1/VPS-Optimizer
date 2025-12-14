@@ -705,7 +705,6 @@ net.ipv4.tcp_adv_win_scale = 0
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
-net.ipv4.tcp_low_latency = 1
 # --- conntrack
 net.netfilter.nf_conntrack_max = 8388608
 net.netfilter.nf_conntrack_tcp_timeout_established = 1800
