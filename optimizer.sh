@@ -19,10 +19,6 @@ SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
 SYSCTL_MAIN_CONF="/etc/sysctl.conf"
 PROF_PATH="/etc/profile"
 
-mkdir -p /etc/sysctl.d
-touch "$SYSCTL_CONF"
-touch "$SYSCTL_MAIN_CONF"
-
 sync_sysctl_conf() {
     cp "$SYSCTL_CONF" "$SYSCTL_MAIN_CONF"
 }
@@ -31,22 +27,28 @@ apply_sysctl_changes() {
     sync_sysctl_conf
     sysctl --system "$@"
 }
-# Load TCP BBR module
-if ! lsmod | grep -q tcp_bbr; then
-    modprobe tcp_bbr
-fi
+setup_environment() {
+    mkdir -p /etc/sysctl.d
+    touch "$SYSCTL_CONF"
+    touch "$SYSCTL_MAIN_CONF"
 
-# Ensure modules load at boot
-cat > /etc/modules-load.d/vpn-performance.conf << 'EOF'
+    if ! lsmod | grep -q tcp_bbr; then
+        modprobe tcp_bbr
+    fi
+
+    cat > /etc/modules-load.d/vpn-performance.conf << 'EOF'
 # VPN performance modules
 tcp_bbr
 nf_conntrack
 EOF
 
-if ! grep -q $(hostname) $HOST_PATH; then
-echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
-echo "Hosts Fixed."
-fi
+    if ! grep -q $(hostname) $HOST_PATH; then
+        echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+        echo "Hosts Fixed."
+    fi
+
+    update_systemd_limits
+}
 limits_optimizations() {
 echo
 echo -e "${YELLOW}Optimizing System Limits...${NC}"
@@ -132,7 +134,6 @@ update_systemd_limits() {
     
     echo "[+] Done."
 }
-update_systemd_limits
 ask_bbr_version_1() {
     cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
     echo && echo -e "${YELLOW}Installing and configuring BBRv1 + FQ...${NC}"
@@ -1086,6 +1087,7 @@ while true; do
     case $choice in
         1)
             clear
+            setup_environment
             fun_bar "Updating and replacing DNS nameserver" fix_dns
             fun_bar "Complete system update and upgrade" complete_update
             fun_bar "Installing useful packages" installations
@@ -1096,6 +1098,7 @@ while true; do
             final
             ;;
         2)
+            setup_environment
             sourcelist
             complete_update
             installations
