@@ -695,7 +695,7 @@ net.ipv4.tcp_mem = 65536 1048576 67108864
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
-net.ipv4.tcp_retries2 = 8
+net.ipv4.tcp_retries2 = 5
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
@@ -714,7 +714,7 @@ net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
 net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 30
 net.netfilter.nf_conntrack_udp_timeout = 60
 net.netfilter.nf_conntrack_udp_timeout_stream = 120
-
+net.ipv4.tcp_tw_reuse = 1
 # UDP settings
 net.ipv4.udp_mem = 65536 1048576 67108864
 
@@ -760,7 +760,6 @@ net.ipv4.neigh.default.gc_thresh3 = 32768
 kernel.printk = 4 4 1 7
 kernel.panic = 1
 vm.dirty_ratio = 15
-kernel.pid_max = 4194303
 EOL
 
 cat <<EOL > /etc/security/limits.conf
