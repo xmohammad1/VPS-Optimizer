@@ -1079,6 +1079,7 @@ while true; do
     printf "${GREEN} 11) ${NC} Optimize Network ${NC}\n"
     printf "${GREEN} 12) ${NC} Abuse Defender ${NC}\n"
     printf "${GREEN} 13) ${NC} Marzban Node Install ${NC}\n"
+    printf "${GREEN} 14) ${NC} Hawshemi LinuxOptimizer ${NC}\n"
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
@@ -1142,6 +1143,9 @@ while true; do
             ;;
         13)
             bash -c "$(curl -sL https://github.com/xmohammad1/Marzban-scripts/raw/master/marzban-node.sh)" @ install
+            ;;
+        14)
+            bash <(curl -s https://raw.githubusercontent.com/hawshemi/Linux-Optimizer/main/linux-optimizer.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
