@@ -1145,7 +1145,7 @@ while true; do
             bash -c "$(curl -sL https://github.com/xmohammad1/Marzban-scripts/raw/master/marzban-node.sh)" @ install
             ;;
         14)
-            bash <(curl -s https://raw.githubusercontent.com/hawshemi/Linux-Optimizer/main/linux-optimizer.sh)
+            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
