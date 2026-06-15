@@ -1077,9 +1077,10 @@ while true; do
     printf "${GREEN} 9) ${NC} DNS Test V4 ${NC}\n"
     printf "${GREEN} 10) ${NC}DNS Test V6 ${NC}\n"
     printf "${GREEN} 11) ${NC} Optimize Network ${NC}\n"
-    printf "${GREEN} 12) ${NC} Abuse Defender ${NC}\n"
-    printf "${GREEN} 13) ${NC} Marzban Node Install ${NC}\n"
+    printf "${GREEN} 12) ${NC} Kia Abuse Defender ${NC}\n"
+    printf "${GREEN} 13) ${NC} Pasarguard Node Install ${NC}\n"
     printf "${GREEN} 14) ${NC} Hawshemi LinuxOptimizer ${NC}\n"
+    printf "${GREEN} 15) ${NC} Hetzner anti abuse for pg-node ${NC}\n"
     echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
@@ -1142,10 +1143,13 @@ while true; do
             bash <(curl -s https://raw.githubusercontent.com/Kiya6955/Abuse-Defender/main/abuse-defender.sh)
             ;;
         13)
-            bash -c "$(curl -sL https://github.com/xmohammad1/Marzban-scripts/raw/master/marzban-node.sh)" @ install
+            sudo bash -c "$(curl -sL https://github.com/PasarGuard/scripts/raw/main/pg-node.sh)" @ install
             ;;
         14)
-            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
+            bash <(curl -s https://raw.githubusercontent.com/hawshemi/Linux-Optimizer/main/linux-optimizer.sh)
+            ;;
+        15)
+            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/pgnode_antiabuse/refs/heads/main/v1.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
