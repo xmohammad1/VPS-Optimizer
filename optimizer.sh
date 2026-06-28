@@ -1146,7 +1146,7 @@ while true; do
             sudo bash -c "$(curl -sL https://github.com/PasarGuard/scripts/raw/main/pg-node.sh)" @ install
             ;;
         14)
-            bash <(curl -s https://raw.githubusercontent.com/hawshemi/Linux-Optimizer/main/linux-optimizer.sh)
+            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
             ;;
         15)
             bash <(curl -s https://raw.githubusercontent.com/xmohammad1/pgnode_antiabuse/refs/heads/main/v1.sh)
