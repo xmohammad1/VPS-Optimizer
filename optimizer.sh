@@ -1054,6 +1054,63 @@ echo && echo -e "${MAGENTA}Please visit me at: ${GREEN}https://t.me/OPIranCluB $
 echo && printf "\e[93m+-------------------------------------+\e[0m\n" 
 echo && ask_reboot
 }
+optimizer_pg_node_compose() {
+set -e
+
+COMPOSE_FILE="/opt/pg-node/docker-compose.yml"
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "Error: $COMPOSE_FILE not found!"
+    return 1
+fi
+
+echo "Creating backup..."
+cp "$COMPOSE_FILE" "${COMPOSE_FILE}.bak.$(date +%F-%H%M%S)"
+
+if grep -q "^ *ulimits:" "$COMPOSE_FILE"; then
+    echo "Updating existing ulimits..."
+
+    python3 <<'EOF'
+from pathlib import Path
+import re
+
+path = Path("/opt/pg-node/docker-compose.yml")
+text = path.read_text()
+
+pattern = r'''(\n\s*ulimits:\n)(.*?)(?=\n\s*[A-Za-z_][A-Za-z0-9_]*:|\nservices:|\Z)'''
+
+replacement = """
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+      nproc: 1048576
+"""
+
+text = re.sub(pattern, replacement, text, flags=re.S)
+
+path.write_text(text)
+EOF
+
+else
+    echo "Adding ulimits..."
+
+    sed -i '/image:/a\
+    ulimits:\
+      nofile:\
+        soft: 1048576\
+        hard: 1048576\
+      nproc: 1048576' "$COMPOSE_FILE"
+fi
+
+echo "Restarting container..."
+
+cd /opt/pg-node
+
+docker compose up -d --force-recreate
+
+echo "Done."
+}
 while true; do
     clear
     tg_title="https://t.me/OPIranCluB"
@@ -1144,6 +1201,7 @@ while true; do
             ;;
         13)
             sudo bash -c "$(curl -sL https://github.com/PasarGuard/scripts/raw/main/pg-node.sh)" @ install
+            optimizer_pg_node_compose
             ;;
         14)
             bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
