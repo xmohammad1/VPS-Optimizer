@@ -1105,9 +1105,9 @@ fi
 
 echo "Restarting container..."
 
-cd /opt/pg-node
-
-docker compose up -d --force-recreate
+pg-node down
+sleep 5
+pg-node up
 
 echo "Done."
 }
