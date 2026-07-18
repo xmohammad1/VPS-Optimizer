@@ -1056,7 +1056,7 @@ echo && ask_reboot
 }
 optimizer_pg_node_compose() {
 set -e
-
+pg-node down
 COMPOSE_FILE="/opt/pg-node/docker-compose.yml"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
@@ -1104,8 +1104,6 @@ else
 fi
 
 echo "Restarting container..."
-
-pg-node down
 sleep 5
 pg-node up
 
