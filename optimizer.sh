@@ -13,80 +13,6 @@ MAGENTA="\e[95m"
 WHITE="\e[97m"
 NC="\e[0m"
 BOLD=$(tput bold)
-HOST_PATH="/etc/hosts"
-SYSCTL_CONF="/etc/sysctl.d/99-vpn-optimizer.conf"
-SYSCTL_BACKUP="${SYSCTL_CONF}.bak"
-SYSCTL_MAIN_CONF="/etc/sysctl.conf"
-PROF_PATH="/etc/profile"
-
-sync_sysctl_conf() {
-    cp "$SYSCTL_CONF" "$SYSCTL_MAIN_CONF"
-}
-
-apply_sysctl_changes() {
-    sync_sysctl_conf
-    sysctl --system "$@"
-}
-setup_environment() {
-    mkdir -p /etc/sysctl.d
-    touch "$SYSCTL_CONF"
-    touch "$SYSCTL_MAIN_CONF"
-
-    if ! lsmod | grep -q tcp_bbr; then
-        modprobe tcp_bbr
-    fi
-
-    cat > /etc/modules-load.d/vpn-performance.conf << 'EOF'
-# VPN performance modules
-tcp_bbr
-nf_conntrack
-EOF
-
-    if ! grep -q $(hostname) $HOST_PATH; then
-        echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
-        echo "Hosts Fixed."
-    fi
-
-    update_systemd_limits
-}
-limits_optimizations() {
-echo
-echo -e "${YELLOW}Optimizing System Limits...${NC}"
-echo
-sleep 0.5
-sed -i '/ulimit -c/d' $PROF_PATH
-sed -i '/ulimit -d/d' $PROF_PATH
-sed -i '/ulimit -f/d' $PROF_PATH
-sed -i '/ulimit -i/d' $PROF_PATH
-sed -i '/ulimit -l/d' $PROF_PATH
-sed -i '/ulimit -m/d' $PROF_PATH
-sed -i '/ulimit -n/d' $PROF_PATH
-sed -i '/ulimit -q/d' $PROF_PATH
-sed -i '/ulimit -s/d' $PROF_PATH
-sed -i '/ulimit -t/d' $PROF_PATH
-sed -i '/ulimit -u/d' $PROF_PATH
-sed -i '/ulimit -v/d' $PROF_PATH
-sed -i '/ulimit -x/d' $PROF_PATH
-sed -i '/ulimit -s/d' $PROF_PATH
-echo "ulimit -c unlimited" | tee -a $PROF_PATH
-echo "ulimit -d unlimited" | tee -a $PROF_PATH
-echo "ulimit -f unlimited" | tee -a $PROF_PATH
-echo "ulimit -i unlimited" | tee -a $PROF_PATH
-echo "ulimit -l unlimited" | tee -a $PROF_PATH
-echo "ulimit -m unlimited" | tee -a $PROF_PATH
-echo "ulimit -n 1048576" | tee -a $PROF_PATH
-echo "ulimit -q unlimited" | tee -a $PROF_PATH
-echo "ulimit -s -H 65536" | tee -a $PROF_PATH
-echo "ulimit -s 32768" | tee -a $PROF_PATH
-echo "ulimit -t unlimited" | tee -a $PROF_PATH
-echo "ulimit -u unlimited" | tee -a $PROF_PATH
-echo "ulimit -v unlimited" | tee -a $PROF_PATH
-echo "ulimit -x unlimited" | tee -a $PROF_PATH
-echo
-echo -e "${GREEN}System Limits are Optimized.${NC}"
-echo
-sleep 0.5
-}
 check_qdisc_support() {
     local algorithm="$1"
 
@@ -100,54 +26,20 @@ check_qdisc_support() {
         return 1
     fi
 }
-update_systemd_limits() {
-    NEW_NOFILE="1048576"
-    NEW_NPROC="1048576"
-    
-    SYSTEM_CONF="/etc/systemd/system.conf"
-    USER_CONF="/etc/systemd/user.conf"
-    
-    update_limit() {
-        local file="$1"
-        local key="$2"
-        local value="$3"
-    
-        if grep -q "^$key=" "$file"; then
-            sed -i "s/^$key=.*/$key=$value/" "$file"
-        else
-            echo "$key=$value" >> "$file"
-        fi
-    }
-    
-    echo "==== Updating systemd limit settings ===="
-    
-    # --- Update system.conf ---
-    update_limit "$SYSTEM_CONF" "DefaultLimitNOFILE" "$NEW_NOFILE"
-    update_limit "$SYSTEM_CONF" "DefaultLimitNPROC" "$NEW_NPROC"
-    
-    # --- Update user.conf ---
-    update_limit "$USER_CONF" "DefaultLimitNOFILE" "$NEW_NOFILE"
-    update_limit "$USER_CONF" "DefaultLimitNPROC" "$NEW_NPROC"
-    
-    echo "[+] Reloading systemd..."
-    systemctl daemon-reexec
-    
-    echo "[+] Done."
-}
 ask_bbr_version_1() {
-    cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
+    cp /etc/sysctl.conf /etc/sysctl.conf.bak
     echo && echo -e "${YELLOW}Installing and configuring BBRv1 + FQ...${NC}"
-    sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
-    sed -i '/^net.ipv4.tcp_congestion_control/d' "$SYSCTL_CONF"
-    echo "net.core.default_qdisc=fq" >> "$SYSCTL_CONF"
-    echo "net.ipv4.tcp_congestion_control=bbr" >> "$SYSCTL_CONF"
-    if apply_sysctl_changes; then
-        echo && echo -e "${GREEN}Kernel parameter optimization for OpenVZ was successful.${NC}"
-    else
-        echo && echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"
-        mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"
-        sync_sysctl_conf
-    fi
+    sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
+    sed -i '/^net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+    sysctl -p
+        if [ $? -eq 0 ]; then
+            echo && echo -e "${GREEN}Kernel parameter optimization for OpenVZ was successful.${NC}"
+        else
+            echo && echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"
+            mv /etc/sysctl.conf.bak /etc/sysctl.conf
+        fi
 }
 fun_bar() {
     local title="$1"
@@ -612,10 +504,10 @@ swap_maker() {
         echo && printf "\e[93m+-------------------------------------+\e[0m\n"
         
         swap_value=10
-        sed -i "/^vm\.swappiness=/c vm.swappiness=$swap_value" "$SYSCTL_CONF" || {
+        sed -i "/^vm\.swappiness=/c vm.swappiness=$swap_value" /etc/sysctl.conf || {
             echo && echo -e "${RED}Error setting swappiness. Manual modification required.${NC}"
         }
-        apply_sysctl_changes
+        sysctl -p
         
         echo && echo -e "${GREEN}Swap file created and vm.swappiness set to ${RED}$swap_value${NC}."
         break
@@ -639,12 +531,12 @@ swap_maker_1() {
     echo "/swap swap swap defaults 0 0" >> /etc/fstab
     swapon -s | grep '/swap'
     swap_value=10
-    if grep -q "^vm.swappiness" "$SYSCTL_CONF"; then
-        sed -i "s/^vm.swappiness=.*/vm.swappiness=$swap_value/" "$SYSCTL_CONF"
+    if grep -q "^vm.swappiness" /etc/sysctl.conf; then
+        sed -i "s/^vm.swappiness=.*/vm.swappiness=$swap_value/" /etc/sysctl.conf
     else
-        echo "vm.swappiness=$swap_value" >> "$SYSCTL_CONF"
+        echo "vm.swappiness=$swap_value" >> /etc/sysctl.conf
     fi
-    apply_sysctl_changes
+    sysctl -p
 }
 remove_old_sysctl() {
     clear
@@ -653,22 +545,20 @@ remove_old_sysctl() {
     echo && echo -e "${MAGENTA}$title${NC}"
     echo && echo -e "\e[93m+-------------------------------------+\e[0m"
     sed -i '/1000000/d' /etc/profile
-cat <<EOL > "$SYSCTL_CONF"
+cat <<EOL > /etc/sysctl.conf
 # System Configuration Settings for Improved Performance and Security
-net.ipv4.ip_forward = 1
-net.ipv4.conf.all.forwarding = 1
-net.ipv6.conf.all.forwarding = 1
-net.ipv4.ip_local_port_range = 1024 65535
+
 # File limits
 fs.file-max = 67108864
 
 # Network core settings
-net.core.netdev_max_backlog = 65535
+net.core.default_qdisc = fq_codel
+net.core.netdev_max_backlog = 32768
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
-net.core.rmem_max = 67108864
+net.core.rmem_max = 33554432
 net.core.rmem_default = 1048576
-net.core.wmem_max = 67108864
+net.core.wmem_max = 33554432
 net.core.wmem_default = 1048576
 
 # Increase IP Fragmentation Timeout
@@ -682,16 +572,17 @@ vm.dirty_expire_centisecs = 3000
 vm.dirty_writeback_centisecs = 500
 
 # TCP settings
-net.ipv4.tcp_rmem = 16384 1048576 67108864
-net.ipv4.tcp_wmem = 16384 1048576 67108864
-net.ipv4.tcp_fin_timeout = 60
-net.ipv4.tcp_keepalive_time = 1800
+net.ipv4.tcp_rmem = 16384 1048576 33554432
+net.ipv4.tcp_wmem = 16384 1048576 33554432
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_fin_timeout = 25
+net.ipv4.tcp_keepalive_time = 1200
 net.ipv4.tcp_keepalive_probes = 7
-net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_max_orphans = 819200
-net.ipv4.tcp_max_syn_backlog = 65535
+net.ipv4.tcp_max_syn_backlog = 20480
 net.ipv4.tcp_max_tw_buckets = 1440000
-net.ipv4.tcp_mem = 65536 1048576 67108864
+net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
@@ -699,24 +590,15 @@ net.ipv4.tcp_retries2 = 5
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
-net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_adv_win_scale = 0
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
-# --- conntrack
-net.netfilter.nf_conntrack_max = 8388608
-net.netfilter.nf_conntrack_tcp_timeout_established = 1800
-net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
-net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
-net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 30
-net.netfilter.nf_conntrack_udp_timeout = 60
-net.netfilter.nf_conntrack_udp_timeout_stream = 120
-net.ipv4.tcp_tw_reuse = 1
+
 # UDP settings
-net.ipv4.udp_mem = 65536 1048576 67108864
+net.ipv4.udp_mem = 65536 1048576 33554432
 
 # IPv6 settings
 net.ipv6.conf.all.disable_ipv6 = 0
@@ -736,43 +618,38 @@ net.ipv4.conf.default.rp_filter = 2
 net.ipv4.conf.all.rp_filter = 2
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
 # ARP settings
-net.ipv4.neigh.default.gc_thresh1 = 1024
-net.ipv4.neigh.default.gc_thresh2 = 4096
-net.ipv4.neigh.default.gc_thresh3 = 32768
+net.ipv4.neigh.default.gc_thresh1 = 512
+net.ipv4.neigh.default.gc_thresh2 = 2048
+net.ipv4.neigh.default.gc_thresh3 = 16384
 net.ipv4.neigh.default.gc_stale_time = 60
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
 net.ipv4.conf.all.arp_announce = 2
-# IPv6 neighbor cache size
-net.ipv6.neigh.default.gc_thresh1 = 1024
-net.ipv6.neigh.default.gc_thresh2 = 4096
-net.ipv6.neigh.default.gc_thresh3 = 32768
 
-# IPv4 neighbor cache size (ARP)
-net.ipv4.neigh.default.gc_thresh1 = 1024
-net.ipv4.neigh.default.gc_thresh2 = 4096
-net.ipv4.neigh.default.gc_thresh3 = 32768
 # Kernel settings
 kernel.printk = 4 4 1 7
 kernel.panic = 1
+vm.swappiness = 10
 vm.dirty_ratio = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
-* soft nproc 1048576
-* hard nproc 1048576
-* soft nofile 1048576
-* hard nofile 1048576
-root soft nproc 1048576
-root hard nproc 1048576
-root soft nofile 1048576
-root hard nofile 1048576
+* soft nproc 655350
+* hard nproc 655350
+* soft nofile 655350
+* hard nofile 655350
+root soft nproc 655350
+root hard nproc 655350
+root soft nofile 655350
+root hard nofile 655350
 EOL
-    apply_sysctl_changes
+    sysctl -p
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
     press_enter
 }
@@ -940,13 +817,13 @@ queuing() {
 case $choice in
       1)
             # BBR with selected queuing algorithm
-            cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
+            cp /etc/sysctl.conf /etc/sysctl.conf.bak
             queuing
             # Apply the selected queuing algorithm and BBR settings
-            sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
-            echo "net.core.default_qdisc=$algorithm" >> "$SYSCTL_CONF"
-            echo "net.ipv4.tcp_congestion_control=bbr" >> "$SYSCTL_CONF"
-            apply_sysctl_changes || { mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"; sync_sysctl_conf; }
+            sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
+            echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
+            echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+            sysctl -p || mv /etc/sysctl.conf.bak /etc/sysctl.conf
             ;;
     2)
         echo -e "${YELLOW}Installing and configuring XanMod & BBRv3...${NC}"
@@ -958,25 +835,25 @@ case $choice in
         fi
         ;;
     3)
-        cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
+        cp /etc/sysctl.conf /etc/sysctl.conf.bak
         check_Hybla
         queuing
-        sed -i '/^net.core.default_qdisc/d' "$SYSCTL_CONF"
-        echo "net.core.default_qdisc=$algorithm" >> "$SYSCTL_CONF"
-        sed -i '/^net.ipv4.tcp_congestion_control=/c\net.ipv4.tcp_congestion_control=hybla' "$SYSCTL_CONF"
+        sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
+        echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
+        sed -i '/^net.ipv4.tcp_congestion_control=/c\net.ipv4.tcp_congestion_control=hybla' /etc/sysctl.conf
         # Additional sysctl settings here
-        apply_sysctl_changes || { echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"; mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"; sync_sysctl_conf; }
+        sysctl -p || { echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"; mv /etc/sysctl.conf.bak /etc/sysctl.conf; }
         echo -e "${GREEN}Kernel parameter optimization for Hybla was successful.${NC}"
         ;;
     4)
         echo -e "${YELLOW}Optimizing kernel parameters for OpenVZ BBR...${NC}"
         if [[ -d "/proc/vz" && -e /sys/class/net/venet0 ]]; then
-            cp "$SYSCTL_CONF" "$SYSCTL_BACKUP"
-            sed -i '/net.core.default_qdisc/d' "$SYSCTL_CONF"
-            sed -i '/net.ipv4.tcp_congestion_control/d' "$SYSCTL_CONF"
+            cp /etc/sysctl.conf /etc/sysctl.conf.bak
+            sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+            sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
             tc qdisc add dev venet0 root fq_codel
-            sysctl -w net.ipv4.tcp_congestion_control=bbr || { echo -e "${RED}Optimization failed.${NC}"; mv "$SYSCTL_BACKUP" "$SYSCTL_CONF"; exit 1; }
-            apply_sysctl_changes
+            sysctl -w net.ipv4.tcp_congestion_control=bbr || { echo -e "${RED}Optimization failed.${NC}"; mv /etc/sysctl.conf.bak /etc/sysctl.conf; exit 1; }
+            sysctl -p
             echo -e "${GREEN}Kernel parameter optimization for OpenVZ was successful.${NC}"
         else
             echo -e "${RED}This system is not OpenVZ or lacks venet0 support. No changes were made.${NC}"
@@ -1054,61 +931,6 @@ echo && echo -e "${MAGENTA}Please visit me at: ${GREEN}https://t.me/OPIranCluB $
 echo && printf "\e[93m+-------------------------------------+\e[0m\n" 
 echo && ask_reboot
 }
-optimizer_pg_node_compose() {
-set -e
-pg-node down
-COMPOSE_FILE="/opt/pg-node/docker-compose.yml"
-
-if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "Error: $COMPOSE_FILE not found!"
-    return 1
-fi
-
-echo "Creating backup..."
-cp "$COMPOSE_FILE" "${COMPOSE_FILE}.bak.$(date +%F-%H%M%S)"
-
-if grep -q "^ *ulimits:" "$COMPOSE_FILE"; then
-    echo "Updating existing ulimits..."
-
-    python3 <<'EOF'
-from pathlib import Path
-import re
-
-path = Path("/opt/pg-node/docker-compose.yml")
-text = path.read_text()
-
-pattern = r'''(\n\s*ulimits:\n)(.*?)(?=\n\s*[A-Za-z_][A-Za-z0-9_]*:|\nservices:|\Z)'''
-
-replacement = """
-    ulimits:
-      nofile:
-        soft: 1048576
-        hard: 1048576
-      nproc: 1048576
-"""
-
-text = re.sub(pattern, replacement, text, flags=re.S)
-
-path.write_text(text)
-EOF
-
-else
-    echo "Adding ulimits..."
-
-    sed -i '/image:/a\
-    ulimits:\
-      nofile:\
-        soft: 1048576\
-        hard: 1048576\
-      nproc: 1048576' "$COMPOSE_FILE"
-fi
-
-echo "Restarting container..."
-sleep 5
-pg-node up
-
-echo "Done."
-}
 while true; do
     clear
     tg_title="https://t.me/OPIranCluB"
@@ -1136,14 +958,13 @@ while true; do
     printf "${GREEN} 13) ${NC} Pasarguard Node Install ${NC}\n"
     printf "${GREEN} 14) ${NC} Hawshemi LinuxOptimizer ${NC}\n"
     printf "${GREEN} 15) ${NC} Hetzner anti abuse for pg-node ${NC}\n"
-    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m"
+    echo && echo -e "\e[93m+-----------------------------------------------+\e[0m" 
     echo && printf "${GREEN} E) ${NC} Exit the menu${NC}\n"
     echo && echo -ne "${GREEN}Select an option: ${NC}"
     read -r choice
     case $choice in
         1)
             clear
-            setup_environment
             fun_bar "Updating and replacing DNS nameserver" fix_dns
             fun_bar "Complete system update and upgrade" complete_update
             fun_bar "Installing useful packages" installations
@@ -1154,7 +975,6 @@ while true; do
             final
             ;;
         2)
-            setup_environment
             sourcelist
             complete_update
             installations
