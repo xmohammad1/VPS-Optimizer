@@ -614,8 +614,8 @@ vm.swappiness = 10
 vm.vfs_cache_pressure = 100
 
 # Packet filtering
-net.ipv4.conf.default.rp_filter = 2
-net.ipv4.conf.all.rp_filter = 2
+net.ipv4.conf.default.rp_filter = 0
+net.ipv4.conf.all.rp_filter = 0
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_source_route = 0
@@ -637,6 +637,12 @@ kernel.printk = 4 4 1 7
 kernel.panic = 1
 vm.swappiness = 10
 vm.dirty_ratio = 15
+net.ipv4.ip_local_port_range = 1024 65535
+net.netfilter.nf_conntrack_max = 1048576
+net.netfilter.nf_conntrack_buckets = 262144
+net.netfilter.nf_conntrack_tcp_timeout_established = 600
+net.netfilter.nf_conntrack_tcp_timeout_time_wait = 30
+net.netfilter.nf_conntrack_tcp_timeout_close_wait = 15
 EOL
 
 cat <<EOL > /etc/security/limits.conf
