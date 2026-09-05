@@ -1025,7 +1025,6 @@ while true; do
             ;;
         13)
             sudo bash -c "$(curl -sL https://github.com/PasarGuard/scripts/raw/main/pg-node.sh)" @ install
-            optimizer_pg_node_compose
             ;;
         14)
             bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
