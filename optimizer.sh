@@ -586,15 +586,15 @@ net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
-net.ipv4.tcp_retries2 = 5
+net.ipv4.tcp_retries2 = 8
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_adv_win_scale = 0
-net.ipv4.tcp_ecn = 1
-net.ipv4.tcp_ecn_fallback = 1
+net.ipv4.tcp_ecn = 0
+# net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
 
 # UDP settings
