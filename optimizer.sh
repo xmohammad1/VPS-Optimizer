@@ -552,7 +552,7 @@ cat <<EOL > /etc/sysctl.conf
 fs.file-max = 67108864
 
 # Network core settings
-net.core.default_qdisc = fq_codel
+net.core.default_qdisc = fq
 net.core.netdev_max_backlog = 32768
 net.core.optmem_max = 262144
 net.core.somaxconn = 65536
@@ -775,8 +775,8 @@ queuing() {
         echo && echo -ne "${YELLOW}Enter your choice [0-3]: ${NC}"
         read -r choice
         case $choice in
-            1) algorithm="fq_codel";;
-            2) algorithm="fq";;
+            1) algorithm="fq";;
+            2) algorithm="fq_codel";;
             3) algorithm="cake";;
             4) algorithm="htb";;
             5) algorithm="sfq";;
