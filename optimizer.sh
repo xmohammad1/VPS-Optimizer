@@ -765,8 +765,8 @@ ask_bbr_version() {
 queuing() {
     while true; do
         echo && echo -e "${CYAN}Select Queuing Algorithm${NC}"
-        echo && echo -e "${RED}1. ${CYAN}FQ codel${NC}"
-        echo -e "${RED}2. ${CYAN}FQ${NC}"
+        echo -e "${RED}1. ${CYAN}FQ${NC}"
+        echo && echo -e "${RED}2. ${CYAN}FQ codel${NC}"
         echo -e "${RED}3. ${CYAN}Cake${NC}"
         echo -e "${RED}4. ${CYAN}HTB${NC}"
         echo -e "${RED}5. ${CYAN}SFQ${NC}"
