@@ -315,6 +315,17 @@ spin() {
 
 fix_dns() {
     clear
+    HOST_PATH="/etc/hosts"
+    if ! grep -q $(hostname) $HOST_PATH; then
+        echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+        echo "Hosts Fixed."
+        echo 
+        sleep 0.5
+    else
+        echo "Hosts OK. No changes made."
+        echo 
+        sleep 0.5
+    fi
     title="DNS Replacement"
     logo
     echo && echo -e "${MAGENTA}$title${NC}"
