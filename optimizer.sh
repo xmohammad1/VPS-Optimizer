@@ -656,6 +656,7 @@ net.netfilter.nf_conntrack_tcp_timeout_time_wait = 30
 net.netfilter.nf_conntrack_tcp_timeout_close_wait = 15
 net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_mtu_probe_floor = 1024
 EOL
 
 cat <<EOL > /etc/security/limits.conf
