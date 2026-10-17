@@ -625,8 +625,8 @@ vm.swappiness = 10
 vm.vfs_cache_pressure = 100
 
 # Packet filtering
-net.ipv4.conf.default.rp_filter = 0
-net.ipv4.conf.all.rp_filter = 0
+# net.ipv4.conf.default.rp_filter = 0
+# net.ipv4.conf.all.rp_filter = 0
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_source_route = 0
