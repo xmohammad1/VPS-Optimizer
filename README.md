@@ -4,9 +4,10 @@
 
 ##### Summurize configuration
 
- - Upgrade, Time setting, Install Useful Packages, Optimize the SYSCTL, Optimize SSH
+ - Upgrade, Time setting, Install Useful Packages, Optimize the SYSCTL
+ - Open-file limit of systemd services (x-ui, Xray, ...) raised to 1048576
  - TCP congestion control (Tcp-BBR, XanMod-BBRv3, OpenVZ-BBR)
- - Added queuing algorithm to combine with BBR (fq , fq_codel, ddr, cake, sfq, pfifo_fast. htb)
+ - Added queuing algorithm to combine with BBR (fq , fq_codel, drr, cake, sfq, pfifo_fast. htb)
  - DNS tuning using resolvconf and optional dns provider
  - update mirrorlist for iranian servers to arvan
  - update timesetting to support iranian servers

@@ -316,8 +316,8 @@ spin() {
 fix_dns() {
     clear
     HOST_PATH="/etc/hosts"
-    if ! grep -q $(hostname) $HOST_PATH; then
-        echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+    if ! grep -qwF -- "$(hostname)" $HOST_PATH; then
+        echo "127.0.1.1 $(hostname)" >> $HOST_PATH
         echo "Hosts Fixed."
         echo 
         sleep 0.5
@@ -330,29 +330,29 @@ fix_dns() {
     logo
     echo && echo -e "${MAGENTA}$title${NC}"
     echo && printf "\e[93m+-------------------------------------+\e[0m\n"
-    interface_name=$(ip -o link show | awk '/state UP/ {print $2}' | sed 's/:$//')
-    if [ -z "$interface_name" ]; then
-        echo && echo -e "${RED}Error: Could not determine network interface.${NC}"
-        return 1
-    fi
     echo && echo -e "${YELLOW}Select DNS provider:${NC}"
     echo -e "$RED 1. $CYAN Google Public DNS (8.8.8.8, 8.8.4.4)${NC}"
     echo -e "$RED 2. $CYAN Cloudflare DNS (1.1.1.1, 1.1.1.2)${NC}"
     echo -e "$RED 3. $CYAN Quad9 DNS (9.9.9.9, 149.112.112.112)${NC}"
     echo -e "$RED 4. $CYAN 403 online DNS (Iranians anti tahrim) (10.202.10.202, 10.202.10.102)${NC}"
-    echo && read -p "Enter your choice (1-4): " choice
+    echo -e "$RED 0. $CYAN Keep the current DNS${NC}"
+    echo && read -p "Enter your choice (0-4): " choice
     case $choice in
         1)
-            dns_servers="nameserver 8.8.8.8\nnameserver 8.8.4.4"
+            dns_servers="8.8.8.8 8.8.4.4"
             ;;
         2)
-            dns_servers="nameserver 1.1.1.1\nnameserver 1.1.1.2"
+            dns_servers="1.1.1.1 1.1.1.2"
             ;;
         3)
-            dns_servers="nameserver 9.9.9.9\nnameserver 149.112.112.112"
+            dns_servers="9.9.9.9 149.112.112.112"
             ;;
         4)
-            dns_servers="nameserver 10.202.10.202\nnameserver 10.202.10.102"
+            dns_servers="10.202.10.202 10.202.10.102"
+            ;;
+        0)
+            echo && echo -e "${YELLOW}DNS left unchanged.${NC}"
+            return 0
             ;;
         *)
             echo && echo -e "${RED}Invalid choice.${NC}"
@@ -361,18 +361,29 @@ fix_dns() {
     esac
     if ! command -v resolvconf >/dev/null 2>&1; then
         echo && echo -e "${YELLOW}resolvconf not found, attempting to install...${NC}"
-        if ! apt-get install -y resolvconf; then
+        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y resolvconf; then
             echo && echo -e "${RED}Error installing resolvconf.${NC}"
-            return 1
         fi
     fi
     if command -v resolvconf >/dev/null 2>&1; then
         echo && echo -e "${YELLOW}Using resolvconf to configure DNS...${NC}"
-        echo "$dns_servers" | resolvconf -a "$interface_name"
-    else
-        echo && echo -e "${YELLOW}resolvconf not found, using /etc/resolv.conf...${NC}"
-        rm -rf /etc/resolv.conf && touch /etc/resolv.conf
-        echo "$dns_servers" > /etc/resolv.conf
+        # resolvconf manages /etc/resolv.conf only while it links to /run/resolvconf/resolv.conf.
+        # The head file survives reboots; records added with "resolvconf -a" live in /run.
+        mkdir -p /etc/resolvconf/resolv.conf.d /run/resolvconf
+        [ -e /run/resolvconf/resolv.conf ] || : > /run/resolvconf/resolv.conf
+        if [ "$(readlink -f /etc/resolv.conf)" != /run/resolvconf/resolv.conf ]; then
+            rm -f /etc/resolv.conf
+            ln -s /run/resolvconf/resolv.conf /etc/resolv.conf
+        fi
+        printf 'nameserver %s\n' $dns_servers > /etc/resolvconf/resolv.conf.d/head
+        resolvconf -u
+    fi
+    # Without resolvconf, or when it did not write the servers, use a plain file rather than
+    # leave /etc/resolv.conf pointing at an empty one.
+    if ! grep -qxF "nameserver ${dns_servers%% *}" /etc/resolv.conf 2>/dev/null; then
+        echo && echo -e "${YELLOW}Writing /etc/resolv.conf directly...${NC}"
+        rm -f /etc/resolv.conf
+        printf 'nameserver %s\n' $dns_servers > /etc/resolv.conf
     fi
     spin & SPIN_PID=$!
     wait $SPIN_PID
@@ -389,11 +400,15 @@ complete_update() {
     echo && printf "\e[93m+-------------------------------------+\e[0m\n" 
     echo && echo -e "${RED}Please wait, it might take a couple of minutes${NC}" && echo
     apt-get update
-    apt-get upgrade -y
-    apt-get autoremove -y
+    # Keep locally changed config files (sshd_config...) instead of stopping at dpkg's question,
+    # which nobody can answer when 1-click runs this in the background.
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade -y
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
     apt-get clean -y
-    echo "140.82.114.4 github.com" | sudo tee -a /etc/hosts
-    echo "185.199.108.133 raw.githubusercontent.com" | sudo tee -a /etc/hosts
+    grep -qE '[[:space:]]github\.com([[:space:]]|$)' /etc/hosts ||
+        echo "140.82.114.4 github.com" >> /etc/hosts
+    grep -qE '[[:space:]]raw\.githubusercontent\.com([[:space:]]|$)' /etc/hosts ||
+        echo "185.199.108.133 raw.githubusercontent.com" >> /etc/hosts
     echo && echo -e "${GREEN}System update & upgrade completed.${NC}"
     sleep 1
     press_enter
@@ -412,6 +427,41 @@ installations() {
     sleep 1
     press_enter
 }
+# Removes the /etc/fstab lines whose first field is $1.
+fstab_drop() {
+    local tmp
+    tmp=$(mktemp) || return 1
+    awk -v dev="$1" '$1 != dev' /etc/fstab > "$tmp" && cat "$tmp" > /etc/fstab
+    rm -f "$tmp"
+}
+# Turns off and deletes the active swap files and their fstab lines. Swap partitions are left
+# alone: "rm" on them would only delete the device node.
+remove_swap_files() {
+    local f
+    for f in $(swapon --noheadings --show=NAME,TYPE 2>/dev/null | awk '$2 == "file" {print $1}'); do
+        swapoff "$f" && rm -f "$f" && fstab_drop "$f" ||
+            echo -e "${RED}Error removing swap file: $f. Skipping.${NC}"
+    done
+}
+# Creates a swap file of $1 MiB at $2, turns it on and adds it to /etc/fstab once.
+make_swap_file() {
+    local mb=$1 file=$2
+    rm -f "$file"
+    touch "$file" && chmod 600 "$file" || return 1
+    chattr +C "$file" 2>/dev/null   # btrfs only accepts a swap file without copy-on-write
+    if ! dd if=/dev/zero of="$file" bs=1M count="$mb" status=progress 2>&1 ||
+       ! mkswap "$file" > /dev/null || ! swapon "$file"; then
+        rm -f "$file"
+        return 1
+    fi
+    fstab_drop "$file"
+    echo "$file none swap sw 0 0" >> /etc/fstab
+}
+set_swappiness() {
+    sed -i -E '/^[[:space:]]*vm\.swappiness[[:space:]]*=/d' /etc/sysctl.conf
+    echo "vm.swappiness = $1" >> /etc/sysctl.conf
+    sysctl -q -w vm.swappiness="$1"
+}
 swap_maker() {
     clear
     title="Setup and Configure Swap File to Boost Performance"
@@ -419,17 +469,9 @@ swap_maker() {
     echo && echo -e "${MAGENTA}$title${NC}"
     echo && printf "\e[93m+-------------------------------------+\e[0m\n"
     
-    existing_swap=$(swapon -s | awk '$1 !~ /^Filename/ {print $1}')
-    if [[ -n "$existing_swap" ]]; then
+    if [[ -n "$(swapon --noheadings --show=NAME 2>/dev/null)" ]]; then
         echo -e "${YELLOW}Removing existing swap files...${NC}"
-        for swap_file in $existing_swap; do
-            swapoff "$swap_file" || {
-                echo -e "${RED}Error turning off swap: $swap_file. Skipping.${NC}"
-            }
-            rm -f "$swap_file" || {
-                echo -e "${RED}Error removing swap file: $swap_file. Skipping.${NC}"
-            }
-        done
+        remove_swap_files
     fi
     
     while true; do
@@ -486,39 +528,16 @@ swap_maker() {
         
         swap_file="/swapfile"
         
-        # Create the swap file
-        dd if=/dev/zero of="$swap_file" bs=1M count="$count" status=progress 2>&1 || {
+        make_swap_file "$count" "$swap_file" || {
             echo && echo -e "${RED}Error creating swap file: $swap_file. Exiting...${NC}"
             return 1
-        }
-        
-        chmod 600 "$swap_file" || {
-            echo && echo -e "${RED}Error setting permissions on swap file. Exiting...${NC}"
-            return 1
-        }
-        
-        mkswap "$swap_file" || {
-            echo && echo -e "${RED}Error setting up swap space. Exiting...${NC}"
-            return 1
-        }
-        
-        swapon "$swap_file" || {
-            echo && echo -e "${RED}Error enabling swap file. Exiting...${NC}"
-            return 1
-        }
-        
-        echo "$swap_file none swap sw 0 0" >> /etc/fstab || {
-            echo && echo -e "${RED}Error adding swap to fstab. Manual addition required.${NC}"
         }
         
         echo && echo -e "${BLUE}Modifying swap usage threshold (vm.swappiness)...${NC}"
         echo && printf "\e[93m+-------------------------------------+\e[0m\n"
         
         swap_value=10
-        sed -i "/^vm\.swappiness=/c vm.swappiness=$swap_value" /etc/sysctl.conf || {
-            echo && echo -e "${RED}Error setting swappiness. Manual modification required.${NC}"
-        }
-        sysctl -p
+        set_swappiness "$swap_value"
         
         echo && echo -e "${GREEN}Swap file created and vm.swappiness set to ${RED}$swap_value${NC}."
         break
@@ -528,26 +547,28 @@ swap_maker() {
     press_enter
 }
 swap_maker_1() {
-    remove_all_swap() {
-    for item in $swap_files $swap_partitions; do
-        swapoff "$item"
-        rm -f "$item"
-    done
-    }
-    remove_all_swap
-    swap_size="512M"
-    chmod 600 /swap
-    mkswap /swap
-    swapon /swap
-    echo "/swap swap swap defaults 0 0" >> /etc/fstab
-    swapon -s | grep '/swap'
-    swap_value=10
-    if grep -q "^vm.swappiness" /etc/sysctl.conf; then
-        sed -i "s/^vm.swappiness=.*/vm.swappiness=$swap_value/" /etc/sysctl.conf
-    else
-        echo "vm.swappiness=$swap_value" >> /etc/sysctl.conf
+    # Keep a swap that is already active (e.g. the installer's /swap.img); otherwise add 512 MB.
+    if [[ -z "$(swapon --noheadings --show=NAME 2>/dev/null)" ]]; then
+        make_swap_file 512 /swap
     fi
-    sysctl -p
+    # Older versions added /swap to /etc/fstab without creating it, which fails at every boot.
+    [[ -f /swap ]] || fstab_drop /swap
+    set_swappiness 10
+}
+# Applies every sysctl file in the order the boot uses (systemd-sysctl), so files that sort
+# after 99-sysctl.conf, such as 99-zz-*.conf, keep their values. "sysctl -p" would put
+# /etc/sysctl.conf on top of them until the next reboot.
+apply_sysctl() {
+    # Debian 13 no longer links /etc/sysctl.conf into /etc/sysctl.d, so systemd skips it.
+    if [ -d /etc/sysctl.d ] && [ ! -e /etc/sysctl.d/99-sysctl.conf ] && [ ! -L /etc/sysctl.d/99-sysctl.conf ]; then
+        ln -s ../sysctl.conf /etc/sysctl.d/99-sysctl.conf
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl restart systemd-sysctl.service ||
+            echo -e "${RED}Some sysctl values were rejected; see: journalctl -u systemd-sysctl${NC}"
+    else
+        sysctl -p > /dev/null
+    fi
 }
 remove_old_sysctl() {
     clear
@@ -556,6 +577,13 @@ remove_old_sysctl() {
     echo && echo -e "${MAGENTA}$title${NC}"
     echo && echo -e "\e[93m+-------------------------------------+\e[0m"
     sed -i '/1000000/d' /etc/profile
+    [ -f /etc/sysctl.conf ] && cp -a /etc/sysctl.conf "/etc/sysctl.conf.bak-$(date +%Y%m%d-%H%M%S)"
+    local mem_pages mem_limits reserved_ports nofile
+    # tcp_mem and udp_mem count pages, not bytes. Sized from RAM, so socket buffers cannot
+    # take all memory on a busy server.
+    mem_pages=$(awk -v page="$(getconf PAGESIZE)" '/^MemTotal:/ {printf "%d", $2 * 1024 / page}' /proc/meminfo)
+    mem_limits="$((mem_pages / 16)) $((mem_pages / 8)) $((mem_pages / 4))"
+    reserved_ports=$(ss -Hltn 2>/dev/null | awk '{n = split($4, a, ":"); if (a[n] >= 10240) print a[n]}' | sort -un | paste -sd, -)
 cat <<EOL > /etc/sysctl.conf
 # System Configuration Settings for Improved Performance and Security
 
@@ -573,8 +601,8 @@ net.core.wmem_max = 33554432
 net.core.wmem_default = 1048576
 
 # Increase IP Fragmentation Timeout
-net.ipv4.ipfrag_high_thresh = 524288
-net.ipv4.ipfrag_low_thresh = 446464
+# (ipfrag_high_thresh/ipfrag_low_thresh keep the kernel's 4 MB/3 MB: a high mark below the
+# default low mark is rejected at boot and makes systemd-sysctl fail)
 net.ipv4.ipfrag_time = 60
 
 # Memory Optimization
@@ -593,7 +621,8 @@ net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_max_orphans = 819200
 net.ipv4.tcp_max_syn_backlog = 20480
 net.ipv4.tcp_max_tw_buckets = 1440000
-net.ipv4.tcp_mem = 65536 1048576 33554432
+# Pages: trim socket buffers above 1/8 of RAM, never use more than 1/4
+net.ipv4.tcp_mem = $mem_limits
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
@@ -609,7 +638,7 @@ net.ipv4.tcp_ecn = 0
 net.ipv4.tcp_syncookies = 1
 
 # UDP settings
-net.ipv4.udp_mem = 65536 1048576 33554432
+net.ipv4.udp_mem = $mem_limits
 
 # IPv6 settings
 net.ipv6.conf.all.disable_ipv6 = 0
@@ -629,8 +658,6 @@ vm.vfs_cache_pressure = 100
 # net.ipv4.conf.all.rp_filter = 0
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
-net.ipv4.conf.all.accept_source_route = 0
-net.ipv4.conf.default.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
@@ -646,9 +673,12 @@ net.ipv4.conf.all.arp_announce = 2
 # Kernel settings
 kernel.printk = 4 4 1 7
 kernel.panic = 1
-vm.swappiness = 10
 vm.dirty_ratio = 15
-net.ipv4.ip_local_port_range = 1024 65535
+# Outgoing connections take their local port from this range, and nothing can listen on a
+# port that one of them (or its TIME_WAIT) holds. Starting at 10240 keeps panels and common
+# inbound ports out of it; ports above that which were listening at setup time are reserved.
+net.ipv4.ip_local_port_range = 10240 65535
+${reserved_ports:+net.ipv4.ip_local_reserved_ports = $reserved_ports}
 net.netfilter.nf_conntrack_max = 1048576
 net.netfilter.nf_conntrack_buckets = 262144
 net.netfilter.nf_conntrack_tcp_timeout_established = 14400
@@ -669,8 +699,23 @@ root hard nproc 655350
 root soft nofile 655350
 root hard nofile 655350
 EOL
-    sysctl -p
+    # limits.conf only covers login sessions. Services (x-ui, xray, ...) get systemd's default
+    # hard limit of 524288 open files, and Xray uses about 4 per relayed connection. The limit
+    # cannot exceed fs.nr_open, or the services would fail to start.
+    nofile=$(cat /proc/sys/fs/nr_open 2>/dev/null || echo 1048576)
+    [ "$nofile" -gt 1048576 ] && nofile=1048576
+    mkdir -p /etc/systemd/system.conf.d
+    printf '[Manager]\nDefaultLimitNOFILE=%s\n' "$nofile" > /etc/systemd/system.conf.d/90-vps-optimizer.conf
+    [ -d /run/systemd/system ] && systemctl daemon-reexec
+    # The net.netfilter keys exist only while nf_conntrack is loaded. Loading it at boot, before
+    # systemd-sysctl runs, makes them apply even when ufw or docker load it later.
+    if modprobe nf_conntrack 2> /dev/null; then
+        echo nf_conntrack > /etc/modules-load.d/vps-optimizer.conf
+    fi
+    apply_sysctl
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
+    [ -n "$reserved_ports" ] && echo -e "${YELLOW}Reserved listening ports: ${GREEN}$reserved_ports${NC}"
+    echo -e "${YELLOW}Services get the new open-file limit when they restart (or after a reboot).${NC}"
     press_enter
 }
 optimize_ssh_configuration() {
@@ -732,18 +777,26 @@ grub_tuning() {
   echo && echo -e "\e[93m+-------------------------------------+\e[0m\n"
   cp /etc/default/grub /etc/default/grub.bak
   echo && echo -e "${YELLOW}Backup of the original grub configuration created at /etc/default/grub.bak${NC}" && echo
-  modify_grub_param() {
-    param="$1"
-    value="$2"
-    sed -i "s/^\($param\)=.*/\1=$value/" /etc/default/grub || {
-      echo && echo -e "${RED}Error modifying GRUB parameter: $param${NC}"
-      return 1
-    }
+  # Add to the existing parameters instead of replacing them: providers put console=ttyS0,
+  # net.ifnames=0 and the like there, and losing them can cost the console or the network.
+  local cmdline tmp
+  cmdline=$(sed -n 's/^GRUB_CMDLINE_LINUX_DEFAULT=//p' /etc/default/grub | tail -n 1)
+  cmdline=${cmdline#[\"\']}
+  cmdline=${cmdline%[\"\']}
+  case " $cmdline " in
+    *" intel_pstate="*) ;;
+    *) cmdline="${cmdline:+$cmdline }intel_pstate=active" ;;
+  esac
+  tmp=$(mktemp) || return 1
+  GRUB_LINE="GRUB_CMDLINE_LINUX_DEFAULT=\"$cmdline\"" awk '
+    /^GRUB_CMDLINE_LINUX_DEFAULT=/ { if (!done) print ENVIRON["GRUB_LINE"]; done = 1; next }
+    { print }
+    END { if (!done) print ENVIRON["GRUB_LINE"] }' /etc/default/grub > "$tmp" && cat "$tmp" > /etc/default/grub || {
+    rm -f "$tmp"
+    echo && echo -e "${RED}Error modifying GRUB parameter: GRUB_CMDLINE_LINUX_DEFAULT${NC}"
+    return 1
   }
-  modify_grub_param "GRUB_CMDLINE_LINUX_DEFAULT" "quiet splash"
-  if ! grep -q "intel_pstate" /etc/default/grub; then
-    modify_grub_param "GRUB_CMDLINE_LINUX_DEFAULT" "$(grep -oP '(?<=GRUB_CMDLINE_LINUX_DEFAULT=").*(?=")' /etc/default/grub) intel_pstate=active"
-  fi
+  rm -f "$tmp"
   echo && echo -e "${YELLOW}Updating GRUB configuration...${NC}"
   update-grub || {
     echo && echo -e "${RED}Error updating GRUB configuration.${NC}"
@@ -752,6 +805,33 @@ grub_tuning() {
   echo && echo -e "${GREEN}GRUB configuration updated successfully!${NC}"
   echo && echo -e "${YELLOW}Reboot your system to apply the changes.${NC}"
   press_enter
+}
+# Saves the default qdisc and congestion control in /etc/sysctl.conf and applies them. The live
+# values are checked rather than the exit code of "sysctl -p", which is non-zero for any missing
+# key (nf_conntrack not loaded, for one) and zero for a rejected value.
+set_qdisc_cc() {
+    local qdisc=$1 cc=$2 f LC_ALL=C
+    local key_re='^[[:space:]]*net\.(core\.default_qdisc|ipv4\.tcp_congestion_control)[[:space:]]*='
+    if [ -z "$qdisc" ]; then
+        echo -e "${YELLOW}No queuing algorithm selected. No changes made.${NC}"
+        return 0
+    fi
+    cp /etc/sysctl.conf /etc/sysctl.conf.bak
+    sed -i -E "/$key_re/d" /etc/sysctl.conf
+    printf 'net.core.default_qdisc = %s\nnet.ipv4.tcp_congestion_control = %s\n' "$qdisc" "$cc" >> /etc/sysctl.conf
+    apply_sysctl
+    if [ "$(sysctl -n net.ipv4.tcp_congestion_control)" = "$cc" ] && [ "$(sysctl -n net.core.default_qdisc)" = "$qdisc" ]; then
+        echo -e "${GREEN}$cc and $qdisc are saved and active (interfaces switch to $qdisc after a reboot).${NC}"
+    elif ! grep -qw "$cc" /proc/sys/net/ipv4/tcp_available_congestion_control; then
+        echo -e "${RED}This kernel has no $cc. Restoring the previous sysctl configuration.${NC}"
+        mv /etc/sysctl.conf.bak /etc/sysctl.conf
+        apply_sysctl
+    else
+        echo -e "${YELLOW}Saved in /etc/sysctl.conf, but a sysctl file that loads after it overrides the value:${NC}"
+        for f in /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf; do
+            [[ -f $f && ${f##*/} > 99-sysctl.conf ]] && grep -qE "$key_re" "$f" && echo "  $f"
+        done
+    fi
 }
 ask_bbr_version() {
     check_Hybla() {
@@ -775,6 +855,7 @@ ask_bbr_version() {
     }
 
 queuing() {
+    algorithm=""
     while true; do
         echo && echo -e "${CYAN}Select Queuing Algorithm${NC}"
         echo -e "${RED}1. ${CYAN}FQ${NC}"
@@ -782,9 +863,10 @@ queuing() {
         echo -e "${RED}3. ${CYAN}Cake${NC}"
         echo -e "${RED}4. ${CYAN}HTB${NC}"
         echo -e "${RED}5. ${CYAN}SFQ${NC}"
-        echo -e "${RED}6. ${CYAN}DDR${NC}"
+        echo -e "${RED}6. ${CYAN}DRR${NC}"
         echo -e "${RED}7. ${CYAN}PFIFO FAST${NC}"
-        echo && echo -ne "${YELLOW}Enter your choice [0-3]: ${NC}"
+        echo -e "${RED}0. ${CYAN}Back (no change)${NC}"
+        echo && echo -ne "${YELLOW}Enter your choice [0-7]: ${NC}"
         read -r choice
         case $choice in
             1) algorithm="fq";;
@@ -792,16 +874,17 @@ queuing() {
             3) algorithm="cake";;
             4) algorithm="htb";;
             5) algorithm="sfq";;
-            6) algorithm="ddr";;
+            6) algorithm="drr";;
             7) algorithm="pfifo_fast";;
             0) return 0;;
-            *) echo -e "${RED}Invalid choice. Enter 0-3.${NC}"; continue;;
+            *) echo -e "${RED}Invalid choice. Enter 0-7.${NC}"; continue;;
         esac
         if check_qdisc_support "$algorithm"; then
             echo -e "${GREEN}$algorithm will be applied after $MAGENTA reboot the server.${NC}"
             return 0
         else
             echo -e "${RED}$algorithm is not supported. Please select another option.${NC}"
+            algorithm=""
         fi
     done
 }
@@ -819,31 +902,26 @@ queuing() {
     $GREEN CAKE: $NC Manages buffer bloat and bandwidth effectively for WAN links; more CPU-intensive but great for high-latency links.
     $GREEN SFQ (Stochastic Fairness Queuing): $NC Simple fairness-based queuing with low overhead; works well in low-latency setups.
     $GREEN PFIFO_FAST: $NC Simple priority-based queuing, prioritizing critical packets; suitable for basic traffic handling.
-    $GREEN DDR (Deficit Round Robin): $NC Balances fairness across flows; good for smooth packet delivery, though less commonly used.
+    $GREEN DRR (Deficit Round Robin): $NC Balances fairness across flows; good for smooth packet delivery, though less commonly used.
     $GREEN HTB (Hierarchical Token Bucket): $NC Allows bandwidth control with multiple classes; ideal for shaping bandwidth distribution.
 
     $MAGENTA My Suggestion for VPN servers : $GREEN Fq_codel / sfq / cake $NC"
     echo
-    echo -e "${RED}1. ${CYAN} BBR [FQ codel / FQ / cake / Sfq / ddr / htb / pfifo fast] ${NC}"
+    echo -e "${RED}1. ${CYAN} BBR [FQ codel / FQ / cake / Sfq / drr / htb / pfifo fast] ${NC}"
     echo -e "${RED}2. ${CYAN} BBRv3 [XanMod kernel]${NC}"
-    echo -e "${RED}3. ${CYAN} HYBLA [FQ codel / FQ / cake / Sfq / ddr / htb / pfifo fast] ${NC}"
+    echo -e "${RED}3. ${CYAN} HYBLA [FQ codel / FQ / cake / Sfq / drr / htb / pfifo fast] ${NC}"
     echo ""
     echo -e "${RED}4. ${CYAN} BBR [OpenVZ] ${NC}"
     echo -e "${RED}0. ${CYAN} Without BBR ${NC}"
     echo ""
-    echo -ne "${YELLOW}Enter your choice [0-3]: ${NC}"
+    echo -ne "${YELLOW}Enter your choice [0-4]: ${NC}"
     read -r choice
 
 case $choice in
       1)
             # BBR with selected queuing algorithm
-            cp /etc/sysctl.conf /etc/sysctl.conf.bak
             queuing
-            # Apply the selected queuing algorithm and BBR settings
-            sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
-            echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
-            echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-            sysctl -p || mv /etc/sysctl.conf.bak /etc/sysctl.conf
+            set_qdisc_cc "$algorithm" bbr
             ;;
     2)
         echo -e "${YELLOW}Installing and configuring XanMod & BBRv3...${NC}"
@@ -855,15 +933,8 @@ case $choice in
         fi
         ;;
     3)
-        cp /etc/sysctl.conf /etc/sysctl.conf.bak
-        check_Hybla
         queuing
-        sed -i '/^net.core.default_qdisc/d' /etc/sysctl.conf
-        echo "net.core.default_qdisc=$algorithm" >> /etc/sysctl.conf
-        sed -i '/^net.ipv4.tcp_congestion_control=/c\net.ipv4.tcp_congestion_control=hybla' /etc/sysctl.conf
-        # Additional sysctl settings here
-        sysctl -p || { echo -e "${RED}Optimization failed. Restoring original sysctl configuration.${NC}"; mv /etc/sysctl.conf.bak /etc/sysctl.conf; }
-        echo -e "${GREEN}Kernel parameter optimization for Hybla was successful.${NC}"
+        set_qdisc_cc "$algorithm" hybla
         ;;
     4)
         echo -e "${YELLOW}Optimizing kernel parameters for OpenVZ BBR...${NC}"
@@ -883,7 +954,7 @@ case $choice in
         echo -e "${YELLOW}No TCP congestion control selected.${NC}"
         ;;
     *)
-        echo -e "${RED}Invalid choice. Please enter a number between 0 and 3.${NC}"
+        echo -e "${RED}Invalid choice. Please enter a number between 0 and 4.${NC}"
         return 1
         ;;
 esac
@@ -985,12 +1056,12 @@ while true; do
     case $choice in
         1)
             clear
-            fun_bar "Updating and replacing DNS nameserver" fix_dns
+            # fix_dns asks which DNS to use, so it cannot run behind fun_bar (no input there).
+            fix_dns
             fun_bar "Complete system update and upgrade" complete_update
             fun_bar "Installing useful packages" installations
             fun_bar "Creating swap file with 512MB" swap_maker_1
             fun_bar "Updating sysctl configuration" remove_old_sysctl
-            fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
             ask_bbr_version
             final
             ;;
@@ -1003,7 +1074,6 @@ while true; do
             swap_maker
             remove_old_sysctl
             grub_tuning
-            remove_old_ssh_conf
             ask_bbr_version
             final
             ;;
@@ -1056,5 +1126,4 @@ while true; do
     esac
     echo && echo -e "\n${RED}Press Enter to continue...${NC}"
     read -r
-done
 done
