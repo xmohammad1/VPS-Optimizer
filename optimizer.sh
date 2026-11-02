@@ -621,8 +621,7 @@ net.ipv4.tcp_keepalive_intvl = 30
 net.ipv4.tcp_max_orphans = 819200
 net.ipv4.tcp_max_syn_backlog = 20480
 net.ipv4.tcp_max_tw_buckets = 1440000
-# Pages: trim socket buffers above 1/8 of RAM, never use more than 1/4
-net.ipv4.tcp_mem = $mem_limits
+net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
 net.ipv4.tcp_retries1 = 3
@@ -638,7 +637,7 @@ net.ipv4.tcp_ecn = 0
 net.ipv4.tcp_syncookies = 1
 
 # UDP settings
-net.ipv4.udp_mem = $mem_limits
+net.ipv4.udp_mem = 65536 1048576 33554432
 
 # IPv6 settings
 net.ipv6.conf.all.disable_ipv6 = 0
@@ -674,10 +673,8 @@ net.ipv4.conf.all.arp_announce = 2
 kernel.printk = 4 4 1 7
 kernel.panic = 1
 vm.dirty_ratio = 15
-# Outgoing connections take their local port from this range, and nothing can listen on a
-# port that one of them (or its TIME_WAIT) holds. Starting at 10240 keeps panels and common
-# inbound ports out of it; ports above that which were listening at setup time are reserved.
-net.ipv4.ip_local_port_range = 10240 65535
+# ports above that which were listening at setup time are reserved.
+net.ipv4.ip_local_port_range = 1024 65535
 ${reserved_ports:+net.ipv4.ip_local_reserved_ports = $reserved_ports}
 net.netfilter.nf_conntrack_max = 1048576
 net.netfilter.nf_conntrack_buckets = 262144
