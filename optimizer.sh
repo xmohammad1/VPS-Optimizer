@@ -1114,7 +1114,7 @@ while true; do
             bash <(curl -s https://raw.githubusercontent.com/xmohammad1/Linux-Optimizer/main/linux-optimizer.sh)
             ;;
         15)
-            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/pgnode_antiabuse/refs/heads/main/v1.sh)
+            bash <(curl -s https://raw.githubusercontent.com/xmohammad1/pgnode_antiabuse/refs/heads/main/v2.sh)
             ;;
         E|e)
             echo && echo -e "$RED Exiting...$NC"
